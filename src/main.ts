@@ -55,8 +55,8 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(
     app,
     new DocumentBuilder()
-      .setTitle('Nbyd IoT Platform Backend')
-      .setDescription('Api documents for Nbyd IoT Platform')
+      .setTitle('AMTBVN EDU Backend')
+      .setDescription('Api documents for AMTBVN EDU')
       .setVersion('1.0')
       .addBearerAuth()
       .build(),

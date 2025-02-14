@@ -10,6 +10,11 @@ import authConfig from '@configs/auth.config';
 import redisConfig, { TRedisConfig } from '@configs/redis.config';
 
 import { TConfigs } from './configs';
+import { UsersController } from './modules/users/users.controller';
+import { UsersService } from './modules/users/users.service';
+import { UsersModule } from './modules/users/users.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -25,10 +30,13 @@ import { TConfigs } from './configs';
     //   }),
     //   inject: [ConfigService],
     // }),
+    PrismaModule,
     ScheduleModule.forRoot(),
     TerminusModule,
+    UsersModule,
+    AuthModule,
   ],
-  controllers: [],
-  providers: [],
+  controllers: [UsersController],
+  providers: [UsersService],
 })
 export class AppModule {}
