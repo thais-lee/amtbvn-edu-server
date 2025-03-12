@@ -15,6 +15,7 @@ import { UsersService } from './modules/users/users.service';
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { CategoriesModule } from './modules/categories/categories.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { AuthModule } from './modules/auth/auth.module';
     TerminusModule,
     UsersModule,
     AuthModule,
+    CategoriesModule,
   ],
   controllers: [UsersController],
   providers: [UsersService],
