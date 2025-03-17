@@ -1,0 +1,1 @@
+export const MINIO_TOKEN = 'MINIO_INJECT_TOKEN';

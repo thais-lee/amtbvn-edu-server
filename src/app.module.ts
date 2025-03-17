@@ -16,12 +16,15 @@ import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CategoriesModule } from './modules/categories/categories.module';
+import { MinioModule } from './storage/storage.module';
+import { FilesModule } from './modules/files/files.module';
+import storageConfig from '@configs/storage.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, authConfig, redisConfig],
+      load: [appConfig, authConfig, redisConfig, storageConfig],
       envFilePath: ['.env', '.env.development', '.env.production'],
     }),
     // RedisModule.forRootAsync({
@@ -37,6 +40,8 @@ import { CategoriesModule } from './modules/categories/categories.module';
     UsersModule,
     AuthModule,
     CategoriesModule,
+    MinioModule,
+    FilesModule,
   ],
   controllers: [UsersController],
   providers: [UsersService],
