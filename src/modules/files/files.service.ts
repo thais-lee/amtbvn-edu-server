@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import * as Minio from 'minio';
@@ -8,8 +8,11 @@ import { TStorageConfig } from '@configs/storage.config';
 
 import { InjectMinio } from '@src/decorators/minio.decorator';
 
-import { CreateFileDto } from './dto/create-file.dto';
 import { UpdateFileDto } from './dto/update-file.dto';
+import { BufferedFile } from './dto/file.dto';
+import * as crypto from 'crypto';
+import { PrismaService } from '@src/prisma/prisma.service';
+
 
 @Injectable()
 export class FilesService {
@@ -18,6 +21,7 @@ export class FilesService {
   constructor(
     @InjectMinio() private readonly minioService: Minio.Client,
     private readonly configService: ConfigService<TConfigs>,
+    private readonly prismaService: PrismaService
   ) {
     this.bucketName =
       this.configService.getOrThrow<TStorageConfig>('storage').bucketName;
@@ -31,27 +35,46 @@ export class FilesService {
     return await this.minioService.presignedUrl('GET', this.bucketName, fileName);
   }
 
-  public async uploadFile(file: Express.Multer.File) {
-    return new Promise((resolve, reject) => {
-      const filename = `${Date.now()}-${file.originalname}`;
-      this.minioService.putObject(
-        this.bucketName,
-        filename,
-        file.buffer,
-        file.size,
-        (error, objInfo) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve(objInfo);
-          }
-        },
+  public async uploadFile(file: BufferedFile, folder: string) {
+    if (!(file.mimetype.includes('jpeg') || file.mimetype.includes('png'))) {
+      throw new HttpException(
+        'File type not supported',
+        HttpStatus.BAD_REQUEST,
       );
-    });
+    }
+    const timestamp = Date.now().toString();
+    const hashedFileName = crypto
+      .createHash('md5')
+      .update(timestamp)
+      .digest('hex');
+    const extension = file.originalname.substring(
+      file.originalname.lastIndexOf('.'),
+      file.originalname.length,
+    );
+    const metaData = {
+      'Content-Type': file.mimetype,
+    };
+    const fileName = folder ? `${folder}/${hashedFileName + extension}` : hashedFileName + extension;
+
+    await this.minioService.putObject(
+      this.bucketName,
+      fileName,
+      file.buffer,
+      file.size,
+      metaData,
+    );
+
+    this.prismaService.file
+
+    return {
+      url: `${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT}/${this.bucketName}/${fileName}`,
+      message: 'File uploaded successfully',
+    };
   }
 
-  create(createFileDto: CreateFileDto) {
-    return 'This action adds a new file';
+  async createFilePath(filePath: string) {
+    await this.minioService.putObject(this.bucketName, filePath, Buffer.from(''))
+    return true;
   }
 
   findAll() {

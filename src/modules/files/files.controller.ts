@@ -10,13 +10,23 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiConsumes } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
+
+import { ApiResponse } from '@shared/response';
+
+import { JwtAuth } from '@src/decorators/jwt-auth.decorator';
+import { TransformResponseInterceptor } from '@src/interceptors/transform-response.interceptor';
 
 import { CreateFileDto } from './dto/create-file.dto';
+import { BufferedFile, Folder } from './dto/file.dto';
 import { UpdateFileDto } from './dto/update-file.dto';
 import { FilesService } from './files.service';
 
 @Controller('files')
+@ApiTags('files')
+@ApiBearerAuth()
+@JwtAuth()
+@UseInterceptors(TransformResponseInterceptor)
 export class FilesController {
   constructor(private readonly filesService: FilesService) {}
 
@@ -31,14 +41,29 @@ export class FilesController {
   }
 
   @Post('upload')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
   @UseInterceptors(FileInterceptor('file'))
-  uploadFile(@UploadedFile('file') file: Express.Multer.File) {
-    return this.filesService.uploadFile(file);
+  uploadFile(@UploadedFile('file') file: BufferedFile, @Body() folder: Folder) {
+    return this.filesService.uploadFile(file, folder.name);
   }
 
-  @Post()
-  create(@Body() createFileDto: CreateFileDto) {
-    return this.filesService.create(createFileDto);
+  @Post('create-folder')
+  @ApiResponse(Boolean)
+  @UseInterceptors(TransformResponseInterceptor)
+  async createFolder(@Body() folder: Folder) : Promise<boolean> {
+    return this.filesService.createFilePath(folder.name);
   }
 
   @Get()

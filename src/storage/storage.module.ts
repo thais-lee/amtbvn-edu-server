@@ -22,6 +22,37 @@ import * as Minio from 'minio';
           secretKey: configService.get<TStorageConfig>('storage').secretKey,
           useSSL: false,
         });
+        client.setBucketPolicy(configService.get<TStorageConfig>('storage').bucketName, JSON.stringify({
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Principal: {
+                AWS: ['*'],
+              },
+              Action: [
+                's3:ListBucketMultipartUploads',
+                's3:GetBucketLocation',
+                's3:ListBucket',
+              ],
+              Resource: ['arn:aws:s3:::' + configService.get<TStorageConfig>('storage').bucketName], // Change this according to your bucket name
+            },
+            {
+              Effect: 'Allow',
+              Principal: {
+                AWS: ['*'],
+              },
+              Action: [
+                's3:PutObject',
+                's3:AbortMultipartUpload',
+                's3:DeleteObject',
+                's3:GetObject',
+                's3:ListMultipartUploadParts',
+              ],
+              Resource: ['arn:aws:s3:::' + configService.get<TStorageConfig>('storage').bucketName + '/*'], // Change this according to your bucket name
+            },
+          ],
+        }));
         return client;
       },
     },

@@ -38,6 +38,7 @@ model User {
   userLogin          UserLogin?
   sessions           UserSession[]
   articles           Articles[]
+  files              File[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -102,4 +103,38 @@ model Articles {
 
   userId Int
   user   User @relation(fields: [userId], references: [id])
+}
+
+model File {
+  id Int @id @default(autoincrement())
+  fileName String
+  description String?
+  storagePath String
+  mimeType String
+  size Int
+  uploadedBy Int
+  user User @relation(fields: [uploadedBy], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  file FileRelation[]
+}
+
+model FileRelation {
+  id Int @id @default(autoincrement())
+  file File @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  fileId Int
+  itemId Int
+  itemType FileItemType
+  createdAt DateTime @default(now())
+
+  @@unique([fileId, itemId, itemType])
+}
+
+enum FileItemType {
+  ARTICLE
+  COURSE
+  LESSON
+  TEST
+  HOMEWORK
 }
