@@ -1,13 +1,16 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-
 import { CourseStatus } from '@prisma/client';
+import { Transform } from 'class-transformer';
+import { IsEnum, IsInt, IsOptional } from 'class-validator';
 
 import { SearchSortInput } from '@shared/base-get-input';
 
 export class GetCoursesDto extends SearchSortInput {
-  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Transform((param) => Number(param.value))
   categoryId?: number;
 
-  @ApiPropertyOptional({ enum: CourseStatus })
+  @IsOptional()
+  @IsEnum(CourseStatus)
   status?: CourseStatus;
 }

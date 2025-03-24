@@ -1,26 +1,101 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+
+import { PrismaService } from '@src/prisma/prisma.service';
+
 import { CreateLessonDto } from './dto/create-lesson.dto';
+import { GetLessonDto } from './dto/get-lesson.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
 
 @Injectable()
 export class LessonsService {
-  create(createLessonDto: CreateLessonDto) {
-    return 'This action adds a new lesson';
+  constructor(private readonly prisma: PrismaService) {}
+  async create(input: CreateLessonDto) {
+    const course = await this.prisma.course.findUnique({
+      where: {
+        id: input.courseId,
+      },
+    });
+    if (!course) {
+      throw new Error('Course not found');
+    }
+    return this.prisma.lesson.create({
+      data: input,
+    });
   }
 
-  findAll() {
-    return `This action returns all lessons`;
+  async findAll(input: GetLessonDto) {
+    return this.prisma.lesson.findMany({
+      where: {
+        courseId: input.courseId ? input.courseId : undefined,
+        previousId: input.previousId ? +input.previousId : undefined,
+        status: input.status ? input.status : undefined,
+        title: {
+          contains: input.search,
+          mode: 'insensitive',
+        },
+      },
+      orderBy: {
+        createdAt: input.order,
+      },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} lesson`;
+  async findOne(id: number) {
+    return this.prisma.lesson.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        courseId: true,
+        previousId: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        isImportant: true,
+
+        previous: {
+          select: {
+            id: true,
+            title: true,
+            isImportant: true,
+          },
+        },
+        next: {
+          select: {
+            id: true,
+            title: true,
+            isImportant: true,
+          },
+        },
+      },
+    });
   }
 
-  update(id: number, updateLessonDto: UpdateLessonDto) {
-    return `This action updates a #${id} lesson`;
+  async update(id: number, data: UpdateLessonDto) {
+    try {
+      return await this.prisma.lesson.update({
+        where: {
+          id,
+        },
+        data,
+      });
+    } catch (error) {
+      throw new NotFoundException('Lesson not found');
+    }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} lesson`;
+  async remove(id: number) {
+    try {
+      return await this.prisma.lesson.delete({
+        where: {
+          id,
+        },
+      });
+    } catch (error) {
+      throw new NotFoundException('Lesson not found');
+    }
   }
 }

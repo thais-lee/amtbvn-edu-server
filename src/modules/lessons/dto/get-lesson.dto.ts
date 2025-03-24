@@ -2,20 +2,16 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 
 import { LessonStatus } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsInt, IsOptional } from 'class-validator';
 
-export class UpdateLessonDto {
-  @ApiPropertyOptional()
+import { SearchSortInput } from '@shared/base-get-input';
+
+export class GetLessonDto extends SearchSortInput {
   @IsOptional()
-  @IsString()
-  title?: string;
+  @IsInt()
+  @Transform((param) => Number(param.value))
+  courseId?: number;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  @ApiPropertyOptional()
   @IsOptional()
   @IsInt()
   @Transform((param) => Number(param.value))
@@ -26,7 +22,6 @@ export class UpdateLessonDto {
     description: 'Status of the lesson',
     enum: LessonStatus,
   })
-  @IsEnum(LessonStatus)
-  @Transform((param) => param.value as LessonStatus)
-  status: LessonStatus;
+  @Transform(({ value }) => value as LessonStatus)
+  status?: LessonStatus;
 }

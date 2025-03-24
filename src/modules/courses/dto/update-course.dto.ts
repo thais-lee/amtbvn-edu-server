@@ -1,17 +1,20 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-
 import { CourseStatus } from '@prisma/client';
+import { Transform } from 'class-transformer';
+import { IsInt, IsOptional, IsString } from 'class-validator';
 
 export class UpdateCourseDto {
-  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   name?: string;
 
-  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   description?: string;
 
-  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Transform((param) => Number(param.value))
   categoryId?: number;
 
-  @ApiPropertyOptional()
   status?: CourseStatus;
 }

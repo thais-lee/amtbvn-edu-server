@@ -2,7 +2,10 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import { LessonStatus } from '@prisma/client';
 
-export class CreateLessonDto {
+export class LessonDto {
+  @ApiProperty()
+  id: number;
+
   @ApiProperty()
   title: string;
 
@@ -20,4 +23,18 @@ export class CreateLessonDto {
 
   @ApiPropertyOptional()
   previousId: number;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  updatedAt: Date;
+}
+
+export class LessonDetailDto extends LessonDto {
+  @ApiProperty()
+  previous: LessonDto;
+
+  @ApiProperty()
+  next: LessonDto;
 }

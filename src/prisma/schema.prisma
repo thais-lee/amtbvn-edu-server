@@ -192,10 +192,13 @@ model Lesson {
   isImportant Boolean      @default(false)
   status      LessonStatus @default(DRAFT)
   courseId    Int
-  course      Course       @relation(fields: [courseId], references: [id])
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+  previousId  Int?         @unique
 
+  previous       Lesson?          @relation(fields: [previousId], references: [id], name: "LessonToLesson")
+  next           Lesson?          @relation("LessonToLesson")
+  course         Course           @relation(fields: [courseId], references: [id])
   lessonItems    LessonItem[]
   lessonProgress LessonProgress[]
   exercises      LessonExercise[]
