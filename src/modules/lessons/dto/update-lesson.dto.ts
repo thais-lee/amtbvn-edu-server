@@ -13,7 +13,7 @@ export class UpdateLessonDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  description?: string;
+  content?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

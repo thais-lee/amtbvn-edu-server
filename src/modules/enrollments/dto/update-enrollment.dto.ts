@@ -1,4 +1,11 @@
-import { PartialType } from '@nestjs/swagger';
-import { CreateEnrollmentDto } from './create-enrollment.dto';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
-export class UpdateEnrollmentDto extends PartialType(CreateEnrollmentDto) {}
+import { EnrollmentStatus } from '@prisma/client';
+import { IsEnum, IsOptional } from 'class-validator';
+
+export class UpdateEnrollmentDto {
+  @ApiPropertyOptional({ enum: EnrollmentStatus })
+  @IsEnum(EnrollmentStatus)
+  @IsOptional()
+  status?: EnrollmentStatus;
+}

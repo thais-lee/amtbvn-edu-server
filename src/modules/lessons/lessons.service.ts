@@ -75,16 +75,12 @@ export class LessonsService {
   }
 
   async update(id: number, data: UpdateLessonDto) {
-    try {
-      return await this.prisma.lesson.update({
-        where: {
-          id,
-        },
-        data,
-      });
-    } catch (error) {
-      throw new NotFoundException('Lesson not found');
-    }
+    return this.prisma.lesson.update({
+      where: {
+        id,
+      },
+      data,
+    });
   }
 
   async remove(id: number) {
