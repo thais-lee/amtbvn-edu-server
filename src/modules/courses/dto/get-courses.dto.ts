@@ -2,16 +2,12 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 
 import { CourseStatus } from '@prisma/client';
 
-export class UpdateCourseDto {
-  @ApiPropertyOptional()
-  name?: string;
+import { SearchSortInput } from '@shared/base-get-input';
 
-  @ApiPropertyOptional()
-  description?: string;
-
+export class GetCoursesDto extends SearchSortInput {
   @ApiPropertyOptional()
   categoryId?: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ enum: CourseStatus })
   status?: CourseStatus;
 }

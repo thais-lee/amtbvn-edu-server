@@ -17,13 +17,11 @@ import { ApiResponse } from '@shared/response';
 import { JwtAuth } from '@src/decorators/jwt-auth.decorator';
 import { TransformResponseInterceptor } from '@src/interceptors/transform-response.interceptor';
 
-import { CreateFileDto } from './dto/create-file.dto';
 import { BufferedFile, Folder } from './dto/file.dto';
-import { UpdateFileDto } from './dto/update-file.dto';
 import { FilesService } from './files.service';
 
 @Controller('files')
-@ApiTags('files')
+@ApiTags('Files')
 @ApiBearerAuth()
 @JwtAuth()
 @UseInterceptors(TransformResponseInterceptor)
