@@ -18,6 +18,10 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { MinioModule } from './storage/storage.module';
 import { FilesModule } from './modules/files/files.module';
+import { CoursesModule } from './modules/courses/courses.module';
+import { EnrollmentsModule } from './modules/enrollments/enrollments.module';
+import { LessonsModule } from './modules/lessons/lessons.module';
+import { ExercisesModule } from './modules/exercises/exercises.module';
 import storageConfig from '@configs/storage.config';
 
 @Module({
@@ -42,6 +46,10 @@ import storageConfig from '@configs/storage.config';
     CategoriesModule,
     MinioModule,
     FilesModule,
+    CoursesModule,
+    EnrollmentsModule,
+    LessonsModule,
+    ExercisesModule,
   ],
   controllers: [UsersController],
   providers: [UsersService],
