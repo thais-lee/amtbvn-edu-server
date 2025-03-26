@@ -1,26 +1,57 @@
 import { Injectable } from '@nestjs/common';
+
+import { BufferedFile } from '@modules/files/dto/file.dto';
+import { FilesService } from '@modules/files/files.service';
+
+import { PrismaService } from '@src/prisma/prisma.service';
+
 import { CreateExerciseDto } from './dto/create-exercise.dto';
+import { GetLessonExerciseDto } from './dto/get-lesson-exercise.dto';
 import { UpdateExerciseDto } from './dto/update-exercise.dto';
 
 @Injectable()
 export class ExercisesService {
-  create(createExerciseDto: CreateExerciseDto) {
-    return 'This action adds a new exercise';
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly filesService: FilesService,
+  ) {}
+
+  async create(input: CreateExerciseDto, file: BufferedFile) {
+    await this.filesService.uploadFile(file, 'test');
+
+    return this.prisma.lessonExercise.create({
+      data: input,
+    });
   }
 
-  findAll() {
-    return `This action returns all exercises`;
+  async findAll(input: GetLessonExerciseDto) {
+    return this.prisma.lessonExercise.findMany({
+      where: input,
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} exercise`;
+  async findOne(id: number) {
+    return this.prisma.lessonExercise.findUnique({
+      where: {
+        id,
+      },
+    });
   }
 
-  update(id: number, updateExerciseDto: UpdateExerciseDto) {
-    return `This action updates a #${id} exercise`;
+  async update(id: number, input: UpdateExerciseDto) {
+    return this.prisma.lessonExercise.update({
+      where: {
+        id,
+      },
+      data: input,
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} exercise`;
+  async remove(id: number) {
+    return this.prisma.lessonExercise.delete({
+      where: {
+        id,
+      },
+    });
   }
 }

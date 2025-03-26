@@ -140,15 +140,17 @@ model FileRelation {
   itemType FileItemType
   itemId   Int
 
-  @@unique([fileId, itemType])
+  // @@unique([fileId, itemType])
 }
 
 enum FileItemType {
   ARTICLE
   COURSE
   LESSON
+  LESSON_EXERCISE
   TEST
   HOMEWORK
+  HOMEWORK_ANSWER
 }
 
 enum CourseStatus {
@@ -169,20 +171,8 @@ model Course {
   updatedAt     DateTime     @updatedAt
 
   lessons     Lesson[]       @relation()
-  courseItems CourseItem[]
   enrollments Enrollment[]
   members     CourseMember[]
-}
-
-model CourseItem {
-  id Int @id @default(autoincrement())
-
-  courseId       Int
-  course         Course   @relation(fields: [courseId], references: [id])
-  content        String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  fileRelationId Int?
 }
 
 model Lesson {
@@ -199,7 +189,6 @@ model Lesson {
   previous       Lesson?          @relation(fields: [previousId], references: [id], name: "LessonToLesson")
   next           Lesson?          @relation("LessonToLesson")
   course         Course           @relation(fields: [courseId], references: [id])
-  lessonItems    LessonItem[]
   lessonProgress LessonProgress[]
   exercises      LessonExercise[]
 }
@@ -207,24 +196,6 @@ model Lesson {
 enum LessonStatus {
   DRAFT
   PUBLISHED
-}
-
-enum LessonItemType {
-  TEXT
-  VIDEO
-  PDF
-  EXERCISE
-}
-
-model LessonItem {
-  id             Int            @id @default(autoincrement())
-  lessonId       Int
-  lesson         Lesson         @relation(fields: [lessonId], references: [id])
-  itemType       LessonItemType
-  content        String?
-  fileRelationId Int[]
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
 }
 
 model LessonProgress {
@@ -281,17 +252,17 @@ enum CourseMemberRole {
 }
 
 model LessonExercise {
-  id                 Int                  @id @default(autoincrement())
-  lessonId           Int
-  lesson             Lesson               @relation(fields: [lessonId], references: [id])
-  type               ExerciseType
-  title              String
-  description        String?
-  fileRelationId     Int[]
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
+  id          Int          @id @default(autoincrement())
+  lessonId    Int
+  type        ExerciseType
+  title       String
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
   ExerciseSubmission ExerciseSubmission[]
   StudentAnswer      StudentAnswer[]
+  lesson             Lesson               @relation(fields: [lessonId], references: [id])
 }
 
 enum ExerciseType {

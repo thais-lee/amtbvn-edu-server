@@ -1,4 +1,21 @@
-import { PartialType } from '@nestjs/swagger';
-import { CreateExerciseDto } from './create-exercise.dto';
+import { ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
-export class UpdateExerciseDto extends PartialType(CreateExerciseDto) {}
+import { ExerciseType } from '@prisma/client';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
+
+export class UpdateExerciseDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({ enum: ExerciseType })
+  @IsOptional()
+  @IsEnum(ExerciseType)
+  type?: ExerciseType;
+}

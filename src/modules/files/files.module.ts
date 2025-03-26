@@ -8,5 +8,6 @@ import { MinioModule } from '@src/storage/storage.module';
   controllers: [FilesController],
   providers: [FilesService],
   imports: [MinioModule, PrismaModule],
+  exports: [FilesService],
 })
 export class FilesModule {}
