@@ -42,23 +42,17 @@ export class EnrollmentsController {
     return this.enrollmentsService.findAll(query);
   }
 
-  @Get(':id')
-  @ApiResponse(EnrollmentDetailDto)
-  findOne(@Param('id') id: number) {
-    return this.enrollmentsService.findOne(id);
-  }
-
-  @Patch(':id')
+  @Patch('update')
   @ApiResponse(EnrollmentDto)
   update(
-    @Param('id') id: number,
+    @Param() params: GetEnrollmentDto,
     @Body() updateEnrollmentDto: UpdateEnrollmentDto,
   ) {
-    return this.enrollmentsService.update(id, updateEnrollmentDto);
+    return this.enrollmentsService.update(params.userId, params.courseId, updateEnrollmentDto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: number) {
-    return this.enrollmentsService.remove(id);
+  @Delete('delete')
+  remove(@Param() params: GetEnrollmentDto) {
+    return this.enrollmentsService.remove(params.userId, params.courseId);
   }
 }

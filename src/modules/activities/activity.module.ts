@@ -5,14 +5,14 @@ import { FilesModule } from '@modules/files/files.module';
 
 import { PrismaModule } from '@src/prisma/prisma.module';
 
-import { ExercisesController } from './exercises.controller';
-import { ExercisesService } from './exercises.service';
+import { ActivityController } from './activity.controller';
+import { ActivityService } from './activity.service';
 import { FilesService } from '@modules/files/files.service';
 
 @Module({
-  controllers: [ExercisesController],
-  providers: [ExercisesService],
-  exports: [ExercisesService],
+  controllers: [ActivityController],
+  providers: [ActivityService],
+  exports: [ActivityService],
   imports: [PrismaModule, JwtModule, FilesModule],
 })
-export class ExercisesModule {}
+export class ActivityModule {}

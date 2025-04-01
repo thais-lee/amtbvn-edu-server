@@ -1,3 +1,5 @@
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+
 export class BufferedFile {
   fieldname: string;
   originalname: string;
@@ -11,29 +13,33 @@ export class Folder {
   name: string;
 }
 
-export class HasFile {
-  file: Buffer | string;
-}
+export class FileDto {
+  @ApiProperty()
+  id: number;
 
-export class StoredFileMetadata {
-  id: string;
-  name: string;
-  encoding: string;
-  mimetype: AppMimeType;
-  size: number;
-  updatedAt: Date;
-  fileSrc?: string;
-}
+  @ApiProperty()
+  fileName: string;
 
-//class StoredFile extends HasFile, StoredFileMetadata {}
-export class StoredFile extends HasFile {
-  id: string;
-  name: string;
-  encoding: string;
-  mimetype: AppMimeType;
+  @ApiPropertyOptional()
+  description?: string;
+
+  @ApiProperty()
+  storagePath: string;
+
+  @ApiProperty()
+  mimeType: AppMimeType;
+
+  @ApiProperty()
   size: number;
+
+  @ApiProperty()
+  uploadedBy: number;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
   updatedAt: Date;
-  fileSrc?: string;
 }
 
 export type AppMimeType = 'image/png' | 'image/jpeg';

@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
-import { ExerciseType } from '@prisma/client';
+import { ActivityType } from '@prisma/client';
 import { Transform } from 'class-transformer';
 import { IsEnum, IsOptional } from 'class-validator';
 
@@ -12,10 +12,10 @@ export class GetLessonExerciseDto extends SearchInput {
   @Transform(({ value }) => Number(value))
   lessonId?: number;
 
-  @ApiPropertyOptional({ enum: ExerciseType })
+  @ApiPropertyOptional({ enum: ActivityType })
   @IsOptional()
-  @IsEnum(ExerciseType)
-  type?: ExerciseType;
+  @IsEnum(ActivityType)
+  type?: ActivityType;
 
   @ApiPropertyOptional()
   @IsOptional()

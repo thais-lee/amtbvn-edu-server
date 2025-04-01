@@ -25,6 +25,76 @@ enum EGender {
   OTHER
 }
 
+enum FileItemType {
+  ARTICLE
+  COURSE
+  LESSON
+  LESSON_EXERCISE
+  TEST
+  HOMEWORK
+  HOMEWORK_ANSWER
+}
+
+enum CourseStatus {
+  PUBLIC
+  PRIVATE
+}
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum ArticlesType {
+  KNOWLEDGE
+  FAQ
+  BULLETIN
+}
+
+enum EnrollmentStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum ActivityType {
+  QUIZ
+  ASSIGNMENT
+}
+
+enum LessonStatus {
+  DRAFT
+  PUBLISHED
+}
+
+/// Trạng thái chấm điểm của một lượt làm Activity
+enum GradingStatus {
+  IN_PROGRESS
+  PENDING_AUTO
+  PENDING_MANUAL
+  GRADED
+}
+
+enum ExerciseType {
+  MCQ
+  ESSAY
+}
+
+enum CourseMemberRole {
+  ADMIN
+  MINISTRY
+  TEACHER
+  STUDENT
+}
+
+enum ActivityQuestionType {
+  MULTIPLE_CHOICE
+  ESSAY
+  FILE_UPLOAD
+}
+
+/// -----USER-----
 model User {
   id                 Int       @id @default(autoincrement())
   firstName          String    @db.VarChar(50)
@@ -36,14 +106,16 @@ model User {
   phoneNumber        String?   @db.VarChar(15)
   roles              ERole[]   @default([USER])
 
-  userLogin      UserLogin?
-  sessions       UserSession[]
-  articles       Articles[]
-  files          File[]
-  lessonProgress LessonProgress[]
-  enrollments    Enrollment[]
-  members        CourseMember[]
-  studentAnswers StudentAnswer[]
+  userLogin           UserLogin?
+  sessions            UserSession[]
+  articles            Articles[]
+  uploadedFiles       File[]
+  teachingAssignments CourseTeacher[]           @relation("TeachingStaff") /// Các khóa học được phân công dạy
+  lessonCompletions   LessonCompletion[]        @relation("UserLessonProgress") /// Tiến trình hoàn thành bài học
+  activityAttempts    ActivityAttempt[]         @relation("UserAttempts") /// Các lượt làm hoạt động (quiz/assignment)
+  createdActivities   Activity[]                @relation("CreatedActivities") /// Các hoạt động đã tạo
+  gradedAttempts      ActivityAttempt[]         @relation("GradedAttempts") /// Các lượt làm bài đã chấm
+  enrollmentsCourse   StudentCourseEnrollment[] @relation("EnrolledUser") /// Khóa học học viên đăng ký
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -78,6 +150,7 @@ model UserSession {
   updatedAt DateTime @updatedAt
 }
 
+/// -----CATEGORIES-----
 model Categories {
   id             Int          @id @default(autoincrement())
   name           String
@@ -90,11 +163,7 @@ model Categories {
   updatedAt      DateTime     @updatedAt
 }
 
-enum ArticleStatus {
-  DRAFT
-  PUBLISHED
-}
-
+/// -----ARTICLES-----
 model Articles {
   id         Int           @id @default(autoincrement())
   title      String
@@ -112,12 +181,7 @@ model Articles {
   user   User @relation(fields: [userId], references: [id])
 }
 
-enum ArticlesType {
-  KNOWLEDGE
-  FAQ
-  BULLETIN
-}
-
+///-----FILE-MANAGEMENT-----
 model File {
   id          Int      @id @default(autoincrement())
   fileName    String
@@ -126,38 +190,69 @@ model File {
   mimeType    String
   size        Int
   uploadedBy  Int
-  user        User     @relation(fields: [uploadedBy], references: [id])
+  uploader    User     @relation(fields: [uploadedBy], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  file FileRelation?
+  lessonAttachments LessonAttachment[]
+  activityMaterials ActivityMaterial[] /// Tài liệu cho Activity
+  studentAnswerFile StudentAnswer?     @relation("StudentAnswerFile") /// File nộp bài của học viên (qua StudentAnswer)
+  libraryResource   LibraryMaterial?
 }
 
-model FileRelation {
-  id       Int          @id @default(autoincrement())
-  file     File         @relation(fields: [fileId], references: [id])
-  fileId   Int          @unique
-  itemType FileItemType
-  itemId   Int
+/// Model Tài liệu Thư viện
+model LibraryMaterial {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  tags        String[]
 
-  // @@unique([fileId, itemType])
+  fileId Int  @unique
+  File   File @relation(fields: [fileId], references: [id], onDelete: Cascade) /// Hoặc Restrict
+
+  usedInCourses CourseLibraryUsage[] /// Khóa học sử dụng
 }
 
-enum FileItemType {
-  ARTICLE
-  COURSE
-  LESSON
-  LESSON_EXERCISE
-  TEST
-  HOMEWORK
-  HOMEWORK_ANSWER
+/// Bảng trung gian Course <-> LibraryMaterial
+model CourseLibraryUsage {
+  courseId          Int
+  Course            Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  libraryMaterialId Int
+  LibraryMaterial   LibraryMaterial @relation(fields: [libraryMaterialId], references: [id], onDelete: Cascade)
+
+  addedAt        DateTime @default(now())
+  displayOrder   Int?
+  contextualNote String?
+  isVisible      Boolean  @default(true)
+
+  @@id([courseId, libraryMaterialId])
+  @@index([libraryMaterialId])
 }
 
-enum CourseStatus {
-  PUBLIC
-  PRIVATE
+model LessonAttachment {
+  lessonId  Int
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  fileId    Int
+  file      File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([lessonId, fileId])
+  @@index([fileId])
 }
 
+/// Bảng trung gian Activity <-> File (Tài liệu cho hoạt động)
+model ActivityMaterial {
+  activityId Int
+  Activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  fileId     Int
+  File       File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@id([activityId, fileId])
+  @@index([fileId])
+}
+
+/// -----COURSE-----
 model Course {
   id            Int          @id @default(autoincrement())
   name          String
@@ -170,9 +265,14 @@ model Course {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
-  lessons     Lesson[]       @relation()
-  enrollments Enrollment[]
-  members     CourseMember[]
+  /// Nội dung khóa học
+  lessons              Lesson[] /// Bài học
+  activities           Activity[]           @relation("CourseActivities") /// Hoạt động (quiz/assignment) cấp khóa học
+  libraryMaterialsUsed CourseLibraryUsage[] /// Tài liệu thư viện sử dụng
+
+  /// Quản lý & người dùng
+  teachers    CourseTeacher[] /// Giáo viên
+  enrollments StudentCourseEnrollment[] /// Học viên đăng ký
 }
 
 model Lesson {
@@ -186,116 +286,173 @@ model Lesson {
   updatedAt   DateTime     @updatedAt
   previousId  Int?         @unique
 
-  previous       Lesson?          @relation(fields: [previousId], references: [id], name: "LessonToLesson")
-  next           Lesson?          @relation("LessonToLesson")
-  course         Course           @relation(fields: [courseId], references: [id])
-  lessonProgress LessonProgress[]
-  exercises      LessonExercise[]
+  previous Lesson? @relation(fields: [previousId], references: [id], name: "LessonToLesson")
+  next     Lesson? @relation("LessonToLesson")
+  course   Course  @relation(fields: [courseId], references: [id])
+
+  activities  Activity[]         @relation("LessonActivities")
+  attachments LessonAttachment[]
+  completions LessonCompletion[]
 }
 
-enum LessonStatus {
-  DRAFT
-  PUBLISHED
+/// --- ASSESSMENT / ACTIVITY ---
+
+model Activity {
+  id               Int          @id @default(autoincrement())
+  title            String
+  description      String?
+  activityType     ActivityType /// Loại hoạt động: QUIZ hay ASSIGNMENT
+  timeLimitMinutes Int?
+  dueDate          DateTime?
+  maxAttempts      Int?
+  passScore        Float?
+  shuffleQuestions Boolean      @default(false)
+  // totalPoints      Float     @default(0) /// Có thể bỏ, tính từ tổng điểm câu hỏi
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  /// Thuộc Khóa học hay Bài học?
+  courseId Int?
+  Course   Course? @relation("CourseActivities", fields: [courseId], references: [id], onDelete: Cascade)
+  lessonId Int?
+  Lesson   Lesson? @relation("LessonActivities", fields: [lessonId], references: [id], onDelete: Cascade)
+
+  creatorId Int
+  createdBy User @relation("CreatedActivities", fields: [creatorId], references: [id], onDelete: Restrict) /// Đổi tên relation
+
+  questions ActivityQuestion[] /// Danh sách câu hỏi
+  attempts  ActivityAttempt[] /// Các lượt làm bài
+  materials ActivityMaterial[] /// Tài liệu đính kèm cho hoạt động (đề bài, hướng dẫn...)
+
+  @@index([courseId])
+  @@index([lessonId])
+  @@index([creatorId])
 }
 
-model LessonProgress {
-  id          Int                  @id @default(autoincrement())
-  lessonId    Int
-  lesson      Lesson               @relation(fields: [lessonId], references: [id])
-  userId      Int
-  user        User                 @relation(fields: [userId], references: [id])
-  status      LessonProgressStatus @default(IN_PROGRESS)
-  completedAt DateTime?
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+model ActivityQuestion {
+  id           Int                  @id @default(autoincrement())
+  activityId   Int
+  Activity     Activity             @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  type         ActivityQuestionType /// MULTIPLE_CHOICE, ESSAY, FILE_UPLOAD
+  content      String /// Nội dung câu hỏi
+  points       Float /// Điểm
+  displayOrder Int /// Thứ tự
+  explanation  String? /// Giải thích
+
+  options ActivityOption[] /// Chỉ áp dụng cho MULTIPLE_CHOICE
+  answers StudentAnswer[] /// Các câu trả lời của học viên
+
+  @@index([activityId])
 }
 
-enum LessonProgressStatus {
-  IN_PROGRESS
-  COMPLETED
+model ActivityOption {
+  id                 Int              @id @default(autoincrement())
+  activityQuestionId Int /// Đổi tên field
+  Question           ActivityQuestion @relation(fields: [activityQuestionId], references: [id], onDelete: Cascade)
+  content            String
+  isCorrect          Boolean
+  displayOrder       Int
+
+  chosenByAnswers StudentAnswer[] /// Đổi tên relation
+
+  @@index([activityQuestionId])
 }
 
-model Enrollment {
-  id        Int              @id @default(autoincrement())
-  courseId  Int
-  course    Course           @relation(fields: [courseId], references: [id])
-  userId    Int
-  user      User             @relation(fields: [userId], references: [id])
-  status    EnrollmentStatus @default(PENDING)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-}
+model ActivityAttempt {
+  id            Int      @id @default(autoincrement())
+  activityId    Int /// Đổi tên field
+  Activity      Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  studentId     Int
+  student       User     @relation("UserAttempts", fields: [studentId], references: [id], onDelete: Cascade) /// Đổi tên relation cho User
+  attemptNumber Int      @default(1)
 
-enum EnrollmentStatus {
-  PENDING
-  ACCEPTED
-  REJECTED
-  CANCELLED
-}
+  startedAt      DateTime      @default(now())
+  completedAt    DateTime?
+  score          Float?
+  gradingStatus  GradingStatus @default(IN_PROGRESS)
+  graderId       Int?
+  grader         User?         @relation("GradedAttempts", fields: [graderId], references: [id], onDelete: SetNull)
+  gradedAt       DateTime?
+  graderFeedback String?
 
-model CourseMember {
-  id        Int              @id @default(autoincrement())
-  courseId  Int
-  course    Course           @relation(fields: [courseId], references: [id])
-  userId    Int
-  user      User             @relation(fields: [userId], references: [id])
-  role      CourseMemberRole
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-}
+  answers StudentAnswer[] /// Danh sách câu trả lời
 
-enum CourseMemberRole {
-  ADMIN
-  MINISTRY
-  TEACHER
-  STUDENT
-}
-
-model LessonExercise {
-  id          Int          @id @default(autoincrement())
-  lessonId    Int
-  type        ExerciseType
-  title       String
-  description String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-
-  ExerciseSubmission ExerciseSubmission[]
-  StudentAnswer      StudentAnswer[]
-  lesson             Lesson               @relation(fields: [lessonId], references: [id])
-}
-
-enum ExerciseType {
-  MCQ
-  ESSAY
-}
-
-model ExerciseSubmission {
-  id              Int            @id @default(autoincrement())
-  exerciseId      Int
-  exercise        LessonExercise @relation(fields: [exerciseId], references: [id])
-  studentAnswerId Int
-  studentAnswer   StudentAnswer  @relation(fields: [studentAnswerId], references: [id])
-  status          ExerciseStatus @default(DRAFT)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-}
-
-enum ExerciseStatus {
-  DRAFT
-  SUBMITTED
+  @@unique([activityId, studentId, attemptNumber]) /// Đổi tên field
+  @@index([activityId])
+  @@index([studentId])
+  @@index([graderId])
+  @@index([gradingStatus])
 }
 
 model StudentAnswer {
-  id                 Int                  @id @default(autoincrement())
-  exerciseId         Int
-  exercise           LessonExercise       @relation(fields: [exerciseId], references: [id])
-  userId             Int
-  user               User                 @relation(fields: [userId], references: [id])
-  status             ExerciseStatus       @default(DRAFT)
-  mcqAnswers         String[]
-  essayAnswer        String?
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-  ExerciseSubmission ExerciseSubmission[]
+  id                 Int              @id @default(autoincrement())
+  activityAttemptId  Int /// Đổi tên field
+  ActivityAttempt    ActivityAttempt  @relation(fields: [activityAttemptId], references: [id], onDelete: Cascade)
+  activityQuestionId Int /// Đổi tên field
+  Question           ActivityQuestion @relation(fields: [activityQuestionId], references: [id], onDelete: Cascade)
+
+  /// Dữ liệu trả lời (chỉ một trong các trường sau có giá trị tùy theo Question.type)
+  selectedOptionId Int? /// ID lựa chọn đã chọn (cho MC)
+  SelectedOption   ActivityOption? @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull) /// Đổi tên relation
+  essayAnswer      String? /// Câu trả lời tự luận
+  fileId           Int?            @unique() /// ID file đã nộp (cho FILE_UPLOAD)
+  file             File?           @relation(fields: [fileId], references: [id], "StudentAnswerFile") /// Liên kết tới file nộp
+
+  /// Kết quả chấm điểm
+  isCorrect Boolean?
+  score     Float?
+  feedback  String?
+
+  @@unique([activityAttemptId, activityQuestionId]) /// Đổi tên field
+  @@index([activityAttemptId])
+  @@index([activityQuestionId])
+  @@index([selectedOptionId])
+  @@index([fileId])
+}
+
+/// --- RBAC / CONTEXT LINKS ---
+
+/// Bảng trung gian Phân công Giáo viên dạy Khóa học
+model CourseTeacher {
+  courseId  Int
+  course    Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  teacherId Int /// userId của người dạy
+  teacher   User   @relation("TeachingStaff", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now())
+
+  @@id([courseId, teacherId])
+  @@index([teacherId])
+}
+
+/// --- PROGRESS TRACKING ---
+/// Bảng Ghi danh và Tiến trình tổng thể của Khóa học
+model StudentCourseEnrollment {
+  userId   Int /// userId của người học
+  user     User   @relation("EnrolledUser", fields: [userId], references: [id], onDelete: Cascade)
+  courseId Int
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  enrolledAt         DateTime         @default(now())
+  status             EnrollmentStatus @default(PENDING) /// Trạng thái
+  completedAt        DateTime? /// Ngày hoàn thành
+  progressPercentage Float?           @default(0) /// % Hoàn thành
+  lastAccessedAt     DateTime? /// Lần truy cập cuối
+
+  @@id([userId, courseId])
+  @@index([courseId])
+}
+
+model LessonCompletion {
+  userId   Int /// userId của người học
+  user     User   @relation("UserLessonProgress", fields: [userId], references: [id], onDelete: Cascade)
+  lessonId Int
+  Lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  isCompleted    Boolean   @default(false) /// Đã hoàn thành?
+  completedAt    DateTime? /// Ngày hoàn thành
+  lastAccessedAt DateTime? /// Lần truy cập cuối
+
+  @@id([userId, lessonId])
+  @@index([lessonId])
 }

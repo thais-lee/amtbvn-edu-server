@@ -1,6 +1,6 @@
 import { ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
-import { ExerciseType } from '@prisma/client';
+import { ActivityType } from '@prisma/client';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class UpdateExerciseDto {
@@ -14,8 +14,8 @@ export class UpdateExerciseDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ enum: ExerciseType })
+  @ApiPropertyOptional({ enum: ActivityType })
   @IsOptional()
-  @IsEnum(ExerciseType)
-  type?: ExerciseType;
+  @IsEnum(ActivityType)
+  type?: ActivityType;
 }

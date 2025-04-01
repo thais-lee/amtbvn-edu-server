@@ -21,7 +21,7 @@ import { FilesModule } from './modules/files/files.module';
 import { CoursesModule } from './modules/courses/courses.module';
 import { EnrollmentsModule } from './modules/enrollments/enrollments.module';
 import { LessonsModule } from './modules/lessons/lessons.module';
-import { ExercisesModule } from './modules/exercises/exercises.module';
+import { ActivityModule } from './modules/activities/activity.module';
 import storageConfig from '@configs/storage.config';
 
 @Module({
@@ -49,7 +49,7 @@ import storageConfig from '@configs/storage.config';
     CoursesModule,
     EnrollmentsModule,
     LessonsModule,
-    ExercisesModule,
+    ActivityModule,
   ],
   controllers: [UsersController],
   providers: [UsersService],

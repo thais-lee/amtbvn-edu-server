@@ -1,8 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-import { ExerciseType } from '@prisma/client';
+import { ActivityType } from '@prisma/client';
 
-export class LessonExerciseDto {
+export class LessonActivityDto {
   @ApiProperty()
   id: number;
 
@@ -12,8 +12,8 @@ export class LessonExerciseDto {
   @ApiProperty()
   description: string;
 
-  @ApiProperty({ enum: ExerciseType })
-  type: ExerciseType;
+  @ApiProperty({ enum: ActivityType })
+  type: ActivityType;
 
   @ApiProperty()
   lessonId: number;

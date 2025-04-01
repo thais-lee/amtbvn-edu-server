@@ -11,85 +11,70 @@ export class EnrollmentsService {
   constructor(private readonly prisma: PrismaService) {}
 
   create(createEnrollmentDto: CreateEnrollmentDto) {
-    return this.prisma.enrollment.create({
+    return this.prisma.studentCourseEnrollment.create({
       data: createEnrollmentDto,
     });
   }
 
   findAll(input: GetEnrollmentDto) {
-    return this.prisma.enrollment.findMany({
+    return this.prisma.studentCourseEnrollment.findMany({
       where: {
         courseId: input.courseId ? input.courseId : undefined,
         userId: input.userId ? input.userId : undefined,
         status: input.status ? input.status : undefined,
       },
       orderBy: {
-        createdAt: input.order ? input.order : 'desc',
+        enrolledAt: input.order ? input.order : 'desc',
       },
     });
   }
 
-  findOne(id: number) {
-    return this.prisma.enrollment.findUnique({
+  async update(
+    userId: number,
+    courseId: number,
+    updateEnrollmentDto: UpdateEnrollmentDto,
+  ) {
+    const enroll = await this.prisma.studentCourseEnrollment.findUnique({
       where: {
-        id,
-      },
-      select: {
-        id: true,
-        userId: true,
-        courseId: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            avatarImageFileUrl: true,
-          },
+        userId_courseId: {
+          userId,
+          courseId,
         },
-        course: {
-          select: {
-            id: true,
-            name: true,
-            imageFileUrl: true,
-          },
-        },
-      },
-    });
-  }
-
-  async update(id: number, updateEnrollmentDto: UpdateEnrollmentDto) {
-    const enroll = await this.prisma.enrollment.findUnique({
-      where: {
-        id,
       },
     });
     if (!enroll) {
       throw new Error('Enrollment not found');
     }
 
-    return this.prisma.enrollment.update({
+    return this.prisma.studentCourseEnrollment.update({
       where: {
-        id,
+        userId_courseId: {
+          courseId,
+          userId,
+        },
       },
       data: updateEnrollmentDto,
     });
   }
 
-  async remove(id: number) {
-    const enroll = await this.prisma.enrollment.findUnique({
+  async remove(userId: number, courseId: number) {
+    const enroll = await this.prisma.studentCourseEnrollment.findUnique({
       where: {
-        id,
+        userId_courseId: {
+          courseId,
+          userId,
+        },
       },
     });
     if (!enroll) {
       throw new Error('Enrollment not found');
     }
-    return this.prisma.enrollment.delete({
+    return this.prisma.studentCourseEnrollment.delete({
       where: {
-        id,
+        userId_courseId: {
+          courseId,
+          userId,
+        },
       },
     });
   }
