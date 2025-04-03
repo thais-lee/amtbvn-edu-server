@@ -1,9 +1,9 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateEnrollmentDto {
   @ApiProperty()
   courseId: number;
 
-  @ApiProperty()
-  userId: number;
+  @ApiPropertyOptional()
+  userId?: number;
 }

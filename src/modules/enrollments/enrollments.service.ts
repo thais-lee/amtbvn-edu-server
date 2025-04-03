@@ -12,7 +12,10 @@ export class EnrollmentsService {
 
   create(createEnrollmentDto: CreateEnrollmentDto) {
     return this.prisma.studentCourseEnrollment.create({
-      data: createEnrollmentDto,
+      data: {
+        courseId: createEnrollmentDto.courseId,
+        userId: createEnrollmentDto.userId,
+      },
     });
   }
 
