@@ -25,8 +25,8 @@ import { TransformResponseInterceptor } from '@src/interceptors/transform-respon
 import { ActivityService } from './activity.service';
 import { LessonActivityDto } from './dto/activity.dto';
 import { CreateActivityDto } from './dto/create-activity.dto';
-import { GetLessonExerciseDto } from './dto/get-lesson-activity.dto';
-import { UpdateExerciseDto } from './dto/update-activity.dto';
+import { GetActivityDto } from './dto/get-lesson-activity.dto';
+import { UpdateActivityDto } from './dto/update-activity.dto';
 
 @Controller('activity')
 @ApiTags('Activity')
@@ -56,9 +56,9 @@ export class ActivityController {
           },
         },
         timeLimitMinutes: { type: 'number' },
-        dueDate: { type: 'string' },
+        dueDate: { type: 'date' },
         maxAttempts: { type: 'number' },
-        passScore: { type: 'number' },
+        passScore: { type: 'float' },
         shuffleQuestions: { type: 'boolean' },
         courseId: { type: 'number' },
         lessonId: { type: 'number' },
@@ -73,12 +73,12 @@ export class ActivityController {
     @UploadedFiles() files: Array<Express.Multer.File>,
     @CurrentUser() user: User,
   ) {
-    return this.activityService.create(createExerciseDto, files, createExerciseDto.creatorId);
+    return this.activityService.create(createExerciseDto, files, user.id);
   }
 
   @Get()
   @ApiArrayResponse(LessonActivityDto)
-  findAll(@Query() query: GetLessonExerciseDto) {
+  findAll(@Query() query: GetActivityDto) {
     return this.activityService.findAll(query);
   }
 
@@ -90,11 +90,15 @@ export class ActivityController {
 
   @Patch(':id')
   @ApiResponse(LessonActivityDto)
+  @UseInterceptors(FilesInterceptor('files'))
+  @ApiResponse(LessonActivityDto)
   update(
     @Param('id') id: number,
-    @Body() updateExerciseDto: UpdateExerciseDto,
+    @Body() updateExerciseDto: UpdateActivityDto,
+    @UploadedFiles() files: Array<Express.Multer.File>,
+    @CurrentUser() user: User,
   ) {
-    return this.activityService.update(id, updateExerciseDto);
+    return this.activityService.update(id, updateExerciseDto, files, user.id);
   }
 
   @Delete(':id')

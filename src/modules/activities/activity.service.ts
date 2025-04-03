@@ -14,8 +14,8 @@ import { FilesService } from '@modules/files/files.service';
 import { PrismaService } from '@src/prisma/prisma.service';
 
 import { CreateActivityDto } from './dto/create-activity.dto';
-import { GetLessonExerciseDto } from './dto/get-lesson-activity.dto';
-import { UpdateExerciseDto } from './dto/update-activity.dto';
+import { GetActivityDto } from './dto/get-lesson-activity.dto';
+import { UpdateActivityDto } from './dto/update-activity.dto';
 
 @Injectable()
 export class ActivityService {
@@ -165,9 +165,16 @@ export class ActivityService {
     }
   }
 
-  async findAll(input: GetLessonExerciseDto) {
+  async findAll(input: GetActivityDto) {
     return this.prisma.activity.findMany({
       where: input,
+      include: {
+        materials: {
+          include: {
+            File: true,
+          },
+        },
+      },
     });
   }
 
@@ -176,36 +183,18 @@ export class ActivityService {
       where: {
         id,
       },
+      include: {
+        materials: {
+          include: {
+            File: true,
+          },
+        },
+      },
     });
-
-    // const file = await this.prisma..findMany({
-    //   where: {
-    //     itemType: FileItemType.LESSON_EXERCISE,
-    //     itemId: id,
-    //   },
-    //   include: {
-    //     file: {
-    //       select: {
-    //         id: true,
-    //         fileName: true,
-    //         storagePath: true,
-    //         mimeType: true,
-    //         size: true,
-    //         uploadedBy: true,
-    //         createdAt: true,
-    //         updatedAt: true,
-    //       },
-    //     },
-    //   }
-    // })
-
-    return {
-      ...activity,
-      file: null,
-    };
+    return activity;
   }
 
-  async update(id: number, input: UpdateExerciseDto) {
+  async update(id: number, input: UpdateActivityDto, files: Array<Express.Multer.File> = [], userId: number) {
     return this.prisma.activity.update({
       where: {
         id,
@@ -213,6 +202,11 @@ export class ActivityService {
       data: input,
     });
   }
+
+  async updateFiles(id: number, files: Array<Express.Multer.File> = []) {
+    
+  }
+  
 
   async remove(id: number) {
     return this.prisma.activity.delete({

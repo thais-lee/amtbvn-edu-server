@@ -6,7 +6,7 @@ import { IsEnum, IsOptional } from 'class-validator';
 
 import { SearchInput } from '@shared/base-get-input';
 
-export class GetLessonExerciseDto extends SearchInput {
+export class GetActivityDto extends SearchInput {
   @ApiPropertyOptional()
   @IsOptional()
   @Transform(({ value }) => Number(value))
