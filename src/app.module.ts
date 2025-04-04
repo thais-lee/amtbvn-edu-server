@@ -23,6 +23,7 @@ import { EnrollmentsModule } from './modules/enrollments/enrollments.module';
 import { LessonsModule } from './modules/lessons/lessons.module';
 import { ActivityModule } from './modules/activities/activity.module';
 import storageConfig from '@configs/storage.config';
+import { ArticlesModule } from '@modules/articles/articles.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import storageConfig from '@configs/storage.config';
     EnrollmentsModule,
     LessonsModule,
     ActivityModule,
+    ArticlesModule,
   ],
   controllers: [UsersController],
   providers: [UsersService],
