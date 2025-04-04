@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '@src/prisma/prisma.service';
 
@@ -10,7 +10,9 @@ import { UpdateEnrollmentDto } from './dto/update-enrollment.dto';
 export class EnrollmentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(createEnrollmentDto: CreateEnrollmentDto) {
+  async create(createEnrollmentDto: CreateEnrollmentDto) {
+    await this.checkCourseExists(createEnrollmentDto.courseId);
+
     return this.prisma.studentCourseEnrollment.create({
       data: {
         courseId: createEnrollmentDto.courseId,
@@ -80,5 +82,16 @@ export class EnrollmentsService {
         },
       },
     });
+  }
+
+  private async checkCourseExists(courseId: number) {
+    const course = await this.prisma.course.findUnique({
+      where: {
+        id: courseId,
+      },
+    });
+    if (!course) {
+      throw new NotFoundException('Course not found');
+    }
   }
 }

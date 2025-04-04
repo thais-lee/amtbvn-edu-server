@@ -50,6 +50,71 @@ export class CoursesService {
       },
       include: {
         category: true,
+        enrollments: true,
+        lessons: true,
+        activities: true,
+        libraryMaterialsUsed: true,
+      },
+    });
+  }
+
+  async findCourseMember(courseId: number) {
+    return this.prisma.studentCourseEnrollment.findMany({
+      where: {
+        courseId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            gender: true,
+            roles: true,
+            avatarImageFileUrl: true,
+            userLogin: {
+              select: {
+                email: true,
+                username: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async findEnrolledCourse(userId: number, input: GetCoursesDto) {
+    return this.prisma.studentCourseEnrollment.findMany({
+      where: {
+        userId,
+        course: {
+          name: input.search
+            ? {
+                contains: input.search,
+                mode: 'insensitive',
+              }
+            : undefined,
+          categoryId: input.categoryId ? input.categoryId : undefined,
+          status: input.status ? input.status : undefined,
+        },
+      },
+      include: {
+        course: {
+          select: {
+            id: true,
+            name: true,
+            categoryId: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+            category: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
       },
     });
   }

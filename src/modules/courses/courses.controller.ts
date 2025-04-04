@@ -1,14 +1,28 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, Query } from '@nestjs/common';
-import { CoursesService } from './courses.service';
-import { CreateCourseDto } from './dto/create-course.dto';
-import { UpdateCourseDto } from './dto/update-course.dto';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseInterceptors,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+
+import { SearchInput } from '@shared/base-get-input';
+import { ApiArrayResponse, ApiResponse } from '@shared/response';
+
+import { CurrentUser } from '@src/decorators/current-user.decorator';
 import { JwtAuth } from '@src/decorators/jwt-auth.decorator';
 import { TransformResponseInterceptor } from '@src/interceptors/transform-response.interceptor';
+
+import { CoursesService } from './courses.service';
 import { CourseDto } from './dto/course.dto';
-import { ApiArrayResponse, ApiResponse } from '@shared/response';
+import { CreateCourseDto } from './dto/create-course.dto';
 import { GetCoursesDto } from './dto/get-courses.dto';
-import { CurrentUser } from '@src/decorators/current-user.decorator';
+import { UpdateCourseDto } from './dto/update-course.dto';
 
 @Controller('courses')
 @ApiTags('Courses')
@@ -28,6 +42,18 @@ export class CoursesController {
   @ApiArrayResponse(CourseDto)
   findAll(@Query() query: GetCoursesDto, @CurrentUser() user) {
     return this.coursesService.findAll(query);
+  }
+
+  @Get('/me')
+  @ApiArrayResponse(CourseDto)
+  findAllByStudent(@Query() query: GetCoursesDto, @CurrentUser() user) {
+    return this.coursesService.findEnrolledCourse(user.id, query);
+  }
+
+  @Get(':id/member')
+  @ApiArrayResponse(CourseDto)
+  getCourseMember(@Param('id') courseId: number) {
+    return this.coursesService.findCourseMember(courseId);
   }
 
   @Get(':id')
