@@ -94,6 +94,27 @@ enum ActivityQuestionType {
   FILE_UPLOAD
 }
 
+enum NotificationType {
+  COURSE_ENROLLMENT
+  COURSE_UPDATE
+  LESSON_PUBLISHED
+  ASSIGNMENT_DUE
+  GRADE_RELEASED
+  SYSTEM_ANNOUNCEMENT
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
+enum NotificationSendStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 /// -----USER-----
 model User {
   id                 Int       @id @default(autoincrement())
@@ -116,6 +137,8 @@ model User {
   createdActivities   Activity[]                @relation("CreatedActivities") /// Các hoạt động đã tạo
   gradedAttempts      ActivityAttempt[]         @relation("GradedAttempts") /// Các lượt làm bài đã chấm
   enrollmentsCourse   StudentCourseEnrollment[] @relation("EnrolledUser") /// Khóa học học viên đăng ký
+  devices             UserDevice[]
+  notifications       Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -273,6 +296,7 @@ model Course {
   /// Quản lý & người dùng
   teachers    CourseTeacher[] /// Giáo viên
   enrollments StudentCourseEnrollment[] /// Học viên đăng ký
+  courseNotifications Notification[]
 }
 
 model Lesson {
@@ -455,4 +479,42 @@ model LessonCompletion {
 
   @@id([userId, lessonId])
   @@index([lessonId])
+}
+
+model UserDevice {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  fcmToken  String   @unique
+  deviceId  String?
+  platform  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Notification {
+  id          Int                  @id @default(autoincrement())
+  userId      Int
+  user        User                 @relation(fields: [userId], references: [id])
+  type        NotificationType
+  title       String
+  message     String
+  data        Json?
+  status      NotificationStatus   @default(UNREAD)
+  sendStatus  NotificationSendStatus @default(PENDING)
+  sentAt      DateTime?
+  sendError   String?
+  retryCount  Int                  @default(0)
+  courseId    Int?
+  course      Course?              @relation(fields: [courseId], references: [id])
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([sendStatus])
 }
