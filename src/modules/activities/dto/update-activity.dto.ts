@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
-import { ActivityType } from '@prisma/client';
+import { ActivityType, ActivityStatus } from '@prisma/client';
 import { IsDate, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 
@@ -46,4 +46,33 @@ export class UpdateActivityDto {
 
   @ApiPropertyOptional()
   shuffleQuestions?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Transform(({ value }) => Number(value))
+  courseId?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Transform(({ value }) => Number(value))
+  lessonId?: number;
+
+  @ApiPropertyOptional({ enum: ActivityStatus })
+  @IsOptional()
+  @IsEnum(ActivityStatus)
+  status?: ActivityStatus;
+
+  @ApiPropertyOptional({ type: [Number] })
+  @IsOptional()
+  @IsInt({ each: true })
+  @Transform(({ value }) => Array.isArray(value) ? value.map(Number) : [Number(value)])
+  fileIdsToRemove?: number[];
+
+  @ApiPropertyOptional({ type: [Number] })
+  @IsOptional()
+  @IsInt({ each: true })
+  @Transform(({ value }) => Array.isArray(value) ? value.map(Number) : [Number(value)])
+  fileIdsToKeep?: number[];
 }

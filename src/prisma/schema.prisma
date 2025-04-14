@@ -61,6 +61,21 @@ enum EnrollmentStatus {
 enum ActivityType {
   QUIZ
   ASSIGNMENT
+  DISCUSSION
+  MATERIAL
+}
+
+enum ActivityStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  SHORT_ANSWER
+  ESSAY
 }
 
 enum LessonStatus {
@@ -322,72 +337,72 @@ model Lesson {
 /// --- ASSESSMENT / ACTIVITY ---
 
 model Activity {
-  id               Int          @id @default(autoincrement())
-  title            String
-  description      String?
-  activityType     ActivityType /// Loại hoạt động: QUIZ hay ASSIGNMENT
+  id              Int                 @id @default(autoincrement())
+  title           String
+  description     String?
+  type            ActivityType
+  status          ActivityStatus      @default(DRAFT)
   timeLimitMinutes Int?
-  dueDate          DateTime?
-  maxAttempts      Int?
-  passScore        Float?
-  shuffleQuestions Boolean      @default(false)
-  // totalPoints      Float     @default(0) /// Có thể bỏ, tính từ tổng điểm câu hỏi
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  dueDate         DateTime?
+  maxAttempts     Int?
+  passScore       Float?
+  shuffleQuestions Boolean            @default(false)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  creatorId       Int
+  courseId        Int?
+  lessonId        Int?
 
-  /// Thuộc Khóa học hay Bài học?
-  courseId Int?
-  Course   Course? @relation("CourseActivities", fields: [courseId], references: [id], onDelete: Cascade)
-  lessonId Int?
-  Lesson   Lesson? @relation("LessonActivities", fields: [lessonId], references: [id], onDelete: Cascade)
+  // Relations
+  creator         User                @relation("CreatedActivities", fields: [creatorId], references: [id])
+  course          Course?             @relation("CourseActivities", fields: [courseId], references: [id])
+  lesson          Lesson?             @relation("LessonActivities", fields: [lessonId], references: [id])
+  questions       ActivityQuestion[]
+  attempts        ActivityAttempt[]
+  materials       ActivityMaterial[]
 
-  creatorId Int
-  createdBy User @relation("CreatedActivities", fields: [creatorId], references: [id], onDelete: Restrict) /// Đổi tên relation
-
-  questions ActivityQuestion[] /// Danh sách câu hỏi
-  attempts  ActivityAttempt[] /// Các lượt làm bài
-  materials ActivityMaterial[] /// Tài liệu đính kèm cho hoạt động (đề bài, hướng dẫn...)
-
+  @@index([creatorId])
   @@index([courseId])
   @@index([lessonId])
-  @@index([creatorId])
 }
 
 model ActivityQuestion {
-  id           Int                  @id @default(autoincrement())
-  activityId   Int
-  Activity     Activity             @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  type         ActivityQuestionType /// MULTIPLE_CHOICE, ESSAY, FILE_UPLOAD
-  content      String /// Nội dung câu hỏi
-  points       Float /// Điểm
-  displayOrder Int /// Thứ tự
-  explanation  String? /// Giải thích
+  id              Int                 @id @default(autoincrement())
+  question        String
+  type            QuestionType
+  points          Float               @default(1)
+  correctAnswer   String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  activityId      Int
 
-  options ActivityOption[] /// Chỉ áp dụng cho MULTIPLE_CHOICE
-  answers StudentAnswer[] /// Các câu trả lời của học viên
+  // Relations
+  activity        Activity            @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  options         QuestionOption[]
+  answers         StudentAnswer[]
 
   @@index([activityId])
 }
 
-model ActivityOption {
-  id                 Int              @id @default(autoincrement())
-  activityQuestionId Int /// Đổi tên field
-  Question           ActivityQuestion @relation(fields: [activityQuestionId], references: [id], onDelete: Cascade)
-  content            String
-  isCorrect          Boolean
-  displayOrder       Int
+model QuestionOption {
+  id              Int                 @id @default(autoincrement())
+  text            String
+  isCorrect       Boolean             @default(false)
+  questionId      Int
 
-  chosenByAnswers StudentAnswer[] /// Đổi tên relation
+  // Relations
+  question        ActivityQuestion    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers         StudentAnswer[]
 
-  @@index([activityQuestionId])
+  @@index([questionId])
 }
 
 model ActivityAttempt {
   id            Int      @id @default(autoincrement())
-  activityId    Int /// Đổi tên field
+  activityId    Int
   Activity      Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
   studentId     Int
-  student       User     @relation("UserAttempts", fields: [studentId], references: [id], onDelete: Cascade) /// Đổi tên relation cho User
+  student       User     @relation("UserAttempts", fields: [studentId], references: [id], onDelete: Cascade)
   attemptNumber Int      @default(1)
 
   startedAt      DateTime      @default(now())
@@ -399,9 +414,9 @@ model ActivityAttempt {
   gradedAt       DateTime?
   graderFeedback String?
 
-  answers StudentAnswer[] /// Danh sách câu trả lời
+  answers StudentAnswer[]
 
-  @@unique([activityId, studentId, attemptNumber]) /// Đổi tên field
+  @@unique([activityId, studentId, attemptNumber])
   @@index([activityId])
   @@index([studentId])
   @@index([graderId])
@@ -410,24 +425,21 @@ model ActivityAttempt {
 
 model StudentAnswer {
   id                 Int              @id @default(autoincrement())
-  activityAttemptId  Int /// Đổi tên field
+  activityAttemptId  Int
   ActivityAttempt    ActivityAttempt  @relation(fields: [activityAttemptId], references: [id], onDelete: Cascade)
-  activityQuestionId Int /// Đổi tên field
+  activityQuestionId Int
   Question           ActivityQuestion @relation(fields: [activityQuestionId], references: [id], onDelete: Cascade)
+  selectedOptionId   Int?
+  SelectedOption     QuestionOption?  @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+  essayAnswer        String?
+  fileId             Int?             @unique()
+  file               File?            @relation(fields: [fileId], references: [id], "StudentAnswerFile")
 
-  /// Dữ liệu trả lời (chỉ một trong các trường sau có giá trị tùy theo Question.type)
-  selectedOptionId Int? /// ID lựa chọn đã chọn (cho MC)
-  SelectedOption   ActivityOption? @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull) /// Đổi tên relation
-  essayAnswer      String? /// Câu trả lời tự luận
-  fileId           Int?            @unique() /// ID file đã nộp (cho FILE_UPLOAD)
-  file             File?           @relation(fields: [fileId], references: [id], "StudentAnswerFile") /// Liên kết tới file nộp
+  isCorrect          Boolean?
+  score              Float?
+  feedback           String?
 
-  /// Kết quả chấm điểm
-  isCorrect Boolean?
-  score     Float?
-  feedback  String?
-
-  @@unique([activityAttemptId, activityQuestionId]) /// Đổi tên field
+  @@unique([activityAttemptId, activityQuestionId])
   @@index([activityAttemptId])
   @@index([activityQuestionId])
   @@index([selectedOptionId])
