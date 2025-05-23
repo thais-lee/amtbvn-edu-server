@@ -27,7 +27,7 @@ export class FileDto {
   storagePath: string;
 
   @ApiProperty()
-  mimeType: AppMimeType;
+  mimeType: string; // Cho phép mọi loại mimetype
 
   @ApiProperty()
   size: number;
@@ -40,6 +40,9 @@ export class FileDto {
 
   @ApiProperty()
   updatedAt: Date;
+
+  @ApiPropertyOptional({ description: 'Presigned URL to access the file' })
+  accessUrl?: string; // Thêm trường này
 }
 
 export type AppMimeType = 'image/png' | 'image/jpeg';

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { Prisma } from '@prisma/client';
 
@@ -27,6 +27,10 @@ export class CategoriesService {
         mode: 'insensitive',
       },
       parentId: query?.parentId ? query.parentId : undefined,
+      slug: {
+        contains: query.search,
+        mode: 'insensitive',
+      },
     };
 
     const total = await this.prisma.categories.count({ where: where });
@@ -36,6 +40,13 @@ export class CategoriesService {
       skip: query.skip,
       take: query.take,
       orderBy: { createdAt: 'desc' },
+      include: {
+        _count: {
+          select: {
+            subCategories: true,
+          },
+        },
+      },
     });
     return new PaginatedData(total, items);
   }
@@ -43,8 +54,64 @@ export class CategoriesService {
   public async findOne(id: number) {
     return await this.prisma.categories.findUnique({
       where: { id },
-      include: { subCategories: true },
+      include: {
+        subCategories: {
+          include: {
+            _count: {
+              select: {
+                subCategories: true,
+              },
+            },
+          },
+        },
+      },
     });
+  }
+
+  public async findBySlug(slug: string) {
+    const category = await this.prisma.categories.findUnique({
+      where: { slug },
+      include: {
+        subCategories: {
+          include: {
+            _count: {
+              select: {
+                subCategories: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!category) {
+      throw new NotFoundException('Category not found');
+    }
+
+    return category;
+  }
+
+  public async getCategoryPath(id: number) {
+    const path: any[] = [];
+    let currentId = id;
+
+    while (currentId) {
+      const category = await this.prisma.categories.findUnique({
+        where: { id: currentId },
+      });
+
+      if (!category) break;
+
+      path.unshift(category);
+      currentId = category.parentId;
+    }
+
+    return path;
+  }
+
+  public async getCategoryPathBySlug(slug: string) {
+    const category = await this.findBySlug(slug);
+    return this.getCategoryPath(category.id);
   }
 
   public async update(id: number, input: UpdateCategoryDto) {

@@ -7,9 +7,11 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 
 import { User } from '@prisma/client';
 
@@ -66,6 +68,28 @@ export class UsersController {
   @ApiResponse(UserBasicDto)
   async adminUpdate(@Param('id') id: number, @Body() input: UpdateUserDto) {
     return this.usersService.adminUpdate(id, input);
+  }
+
+  @Patch('avatar')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @ApiResponse(UserBasicDto)
+  @UseInterceptors(FileInterceptor('file'))
+  async updateAvatar(
+    @CurrentUser() user: User,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.usersService.updateAvatar(file, user);
   }
 
   @Delete('admin-delete/:id')

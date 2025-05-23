@@ -1,20 +1,30 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '@src/prisma/prisma.service';
-import { ArticleStatus, ArticlesType } from '@prisma/client';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
-import { CreateArticleDto } from './dto/article.dto';
-import { GetArticlesDto } from './dto/article.dto';
-import { UpdateArticleDto } from './dto/article.dto';
+import { ArticleStatus, ArticlesType, Prisma } from '@prisma/client';
+
+import { PrismaService } from '@src/prisma/prisma.service';
+
+import {
+  CreateArticleDto,
+  GetArticlesDto,
+  UpdateArticleDto,
+} from './dto/article.dto';
 
 @Injectable()
 export class ArticlesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createArticleDto: CreateArticleDto, userId: number) {
+    const { images, ...articleData } = createArticleDto;
+
     // Check if category exists
     const category = await this.prisma.categories.findUnique({
       where: {
-        id: createArticleDto.categoryId,
+        id: articleData.categoryId,
       },
     });
 
@@ -22,32 +32,26 @@ export class ArticlesService {
       throw new NotFoundException('Category not found');
     }
 
-    return this.prisma.articles.create({
+    // Create article with images
+    const article = await this.prisma.articles.create({
       data: {
-        ...createArticleDto,
+        ...articleData,
         userId,
-        status: createArticleDto.status || ArticleStatus.DRAFT,
-      },
-    });
-  }
-
-  async findAll(input: GetArticlesDto) {
-    return this.prisma.articles.findMany({
-      where: {
-        categoryId: input.categoryId,
-        type: input.type,
-        status: input.status,
-        OR: input.search
-          ? [
-              { title: { contains: input.search, mode: 'insensitive' } },
-              { content: { contains: input.search, mode: 'insensitive' } },
-            ]
-          : undefined,
-      },
-      orderBy: {
-        createdAt: 'desc',
+        status: articleData.status || ArticleStatus.DRAFT,
+        images: {
+          create:
+            images?.map((img) => ({
+              fileId: img.fileId,
+              order: img.order || 0,
+            })) || [],
+        },
       },
       include: {
+        images: {
+          include: {
+            file: true,
+          },
+        },
         category: true,
         user: {
           select: {
@@ -59,12 +63,66 @@ export class ArticlesService {
         },
       },
     });
+
+    return article;
+  }
+
+  async findAll(getArticlesDto: GetArticlesDto) {
+    const { categoryId, type, status, search } = getArticlesDto;
+
+    const where: Prisma.ArticlesWhereInput = {
+      ...(categoryId && { categoryId }),
+      ...(type && { type }),
+      ...(status && { status }),
+      ...(search && {
+        OR: [
+          { title: { contains: search, mode: Prisma.QueryMode.insensitive } },
+          { content: { contains: search, mode: Prisma.QueryMode.insensitive } },
+        ],
+      }),
+    };
+
+    const items = await this.prisma.articles.findMany({
+      where,
+      take: getArticlesDto.take || 10,
+      skip: getArticlesDto.skip || 0,
+      include: {
+        images: {
+          include: {
+            file: true,
+          },
+        },
+        category: true,
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatarImageFileUrl: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    const total = await this.prisma.articles.count({ where });
+    return {
+      items,
+      total,
+    };
   }
 
   async findOne(id: number) {
     const article = await this.prisma.articles.findUnique({
       where: { id },
       include: {
+        images: {
+          include: {
+            file: true,
+          },
+        },
         category: true,
         user: {
           select: {
@@ -84,27 +142,29 @@ export class ArticlesService {
     // Increment view count
     await this.prisma.articles.update({
       where: { id },
-      data: {
-        viewCount: article.viewCount + 1,
-      },
+      data: { viewCount: { increment: 1 } },
     });
 
     return article;
   }
 
   async update(id: number, updateArticleDto: UpdateArticleDto) {
-    const article = await this.prisma.articles.findUnique({
+    const { images, ...articleData } = updateArticleDto;
+
+    // Check if article exists
+    const existingArticle = await this.prisma.articles.findUnique({
       where: { id },
     });
 
-    if (!article) {
+    if (!existingArticle) {
       throw new NotFoundException('Article not found');
     }
 
-    if (updateArticleDto.categoryId) {
+    // If category is being updated, check if it exists
+    if (articleData.categoryId) {
       const category = await this.prisma.categories.findUnique({
         where: {
-          id: updateArticleDto.categoryId,
+          id: articleData.categoryId,
         },
       });
 
@@ -113,10 +173,39 @@ export class ArticlesService {
       }
     }
 
-    return this.prisma.articles.update({
+    // Update article with images
+    const article = await this.prisma.articles.update({
       where: { id },
-      data: updateArticleDto,
+      data: {
+        ...articleData,
+        images: {
+          deleteMany: {},
+          create:
+            images?.map((img) => ({
+              fileId: img.fileId,
+              order: img.order || 0,
+            })) || [],
+        },
+      },
+      include: {
+        images: {
+          include: {
+            file: true,
+          },
+        },
+        category: true,
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatarImageFileUrl: true,
+          },
+        },
+      },
     });
+
+    return article;
   }
 
   async remove(id: number) {
@@ -128,9 +217,12 @@ export class ArticlesService {
       throw new NotFoundException('Article not found');
     }
 
-    return this.prisma.articles.delete({
+    // Delete article and its images
+    await this.prisma.articles.delete({
       where: { id },
     });
+
+    return article;
   }
 
   async likeArticle(id: number) {
@@ -144,9 +236,7 @@ export class ArticlesService {
 
     return this.prisma.articles.update({
       where: { id },
-      data: {
-        likeCount: article.likeCount + 1,
-      },
+      data: { likeCount: { increment: 1 } },
     });
   }
-} 
+}

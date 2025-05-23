@@ -51,6 +51,24 @@ export class CategoriesController {
     return this.categoriesService.findOne(+id);
   }
 
+  @Get('by-slug/:slug')
+  @ApiResponse(CategoryDto)
+  findBySlug(@Param('slug') slug: string) {
+    return this.categoriesService.findBySlug(slug);
+  }
+
+  @Get(':id/path')
+  @ApiResponse(Array<CategoryDto>)
+  getCategoryPath(@Param('id') id: number) {
+    return this.categoriesService.getCategoryPath(+id);
+  }
+
+  @Get('by-slug/:slug/path')
+  @ApiResponse(Array<CategoryDto>)
+  getCategoryPathBySlug(@Param('slug') slug: string) {
+    return this.categoriesService.getCategoryPathBySlug(slug);
+  }
+
   @Patch('admin-update/:id')
   @RolesAuth(['ADMIN'])
   update(@Param('id') id: number, @Body() input: UpdateCategoryDto) {

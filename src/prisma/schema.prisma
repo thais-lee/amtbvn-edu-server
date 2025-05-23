@@ -192,6 +192,8 @@ model UserSession {
 model Categories {
   id             Int          @id @default(autoincrement())
   name           String
+  slug           String?      @unique()
+  imageUrl       String?
   parentId       Int?
   parentCategory Categories?  @relation("CategoriesToCategories", fields: [parentId], references: [id])
   subCategories  Categories[] @relation("CategoriesToCategories")
@@ -205,7 +207,7 @@ model Categories {
 model Articles {
   id         Int           @id @default(autoincrement())
   title      String
-  content    String
+  content    String        @db.Text // Change to Text type for rich text content
   categoryId Int
   category   Categories    @relation(fields: [categoryId], references: [id])
   type       ArticlesType  @default(BULLETIN)
@@ -217,6 +219,21 @@ model Articles {
 
   userId Int
   user   User @relation(fields: [userId], references: [id])
+
+  images ArticleImage[] // Add relation to ArticleImage
+}
+
+/// Model for article images
+model ArticleImage {
+  id        Int      @id @default(autoincrement())
+  articleId Int
+  article   Articles @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  fileId    Int
+  file      File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  order     Int      @default(0) // For ordering images in the article
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 ///-----FILE-MANAGEMENT-----
@@ -236,6 +253,7 @@ model File {
   activityMaterials ActivityMaterial[] /// Tài liệu cho Activity
   studentAnswerFile StudentAnswer?     @relation("StudentAnswerFile") /// File nộp bài của học viên (qua StudentAnswer)
   libraryResource   LibraryMaterial?
+  articleImages     ArticleImage[] /// Images used in articles
 }
 
 /// Model Tài liệu Thư viện
@@ -309,8 +327,8 @@ model Course {
   libraryMaterialsUsed CourseLibraryUsage[] /// Tài liệu thư viện sử dụng
 
   /// Quản lý & người dùng
-  teachers    CourseTeacher[] /// Giáo viên
-  enrollments StudentCourseEnrollment[] /// Học viên đăng ký
+  teachers            CourseTeacher[] /// Giáo viên
+  enrollments         StudentCourseEnrollment[] /// Học viên đăng ký
   courseNotifications Notification[]
 }
 
@@ -337,29 +355,29 @@ model Lesson {
 /// --- ASSESSMENT / ACTIVITY ---
 
 model Activity {
-  id              Int                 @id @default(autoincrement())
-  title           String
-  description     String?
-  type            ActivityType
-  status          ActivityStatus      @default(DRAFT)
+  id               Int            @id @default(autoincrement())
+  title            String
+  description      String?
+  type             ActivityType
+  status           ActivityStatus @default(DRAFT)
   timeLimitMinutes Int?
-  dueDate         DateTime?
-  maxAttempts     Int?
-  passScore       Float?
-  shuffleQuestions Boolean            @default(false)
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  creatorId       Int
-  courseId        Int?
-  lessonId        Int?
+  dueDate          DateTime?
+  maxAttempts      Int?
+  passScore        Float?
+  shuffleQuestions Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  creatorId        Int
+  courseId         Int?
+  lessonId         Int?
 
   // Relations
-  creator         User                @relation("CreatedActivities", fields: [creatorId], references: [id])
-  course          Course?             @relation("CourseActivities", fields: [courseId], references: [id])
-  lesson          Lesson?             @relation("LessonActivities", fields: [lessonId], references: [id])
-  questions       ActivityQuestion[]
-  attempts        ActivityAttempt[]
-  materials       ActivityMaterial[]
+  creator   User               @relation("CreatedActivities", fields: [creatorId], references: [id])
+  course    Course?            @relation("CourseActivities", fields: [courseId], references: [id])
+  lesson    Lesson?            @relation("LessonActivities", fields: [lessonId], references: [id])
+  questions ActivityQuestion[]
+  attempts  ActivityAttempt[]
+  materials ActivityMaterial[]
 
   @@index([creatorId])
   @@index([courseId])
@@ -367,32 +385,32 @@ model Activity {
 }
 
 model ActivityQuestion {
-  id              Int                 @id @default(autoincrement())
-  question        String
-  type            QuestionType
-  points          Float               @default(1)
-  correctAnswer   String?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  activityId      Int
+  id            Int          @id @default(autoincrement())
+  question      String
+  type          QuestionType
+  points        Float        @default(1)
+  correctAnswer String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  activityId    Int
 
   // Relations
-  activity        Activity            @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  options         QuestionOption[]
-  answers         StudentAnswer[]
+  activity Activity         @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  options  QuestionOption[]
+  answers  StudentAnswer[]
 
   @@index([activityId])
 }
 
 model QuestionOption {
-  id              Int                 @id @default(autoincrement())
-  text            String
-  isCorrect       Boolean             @default(false)
-  questionId      Int
+  id         Int     @id @default(autoincrement())
+  text       String
+  isCorrect  Boolean @default(false)
+  questionId Int
 
   // Relations
-  question        ActivityQuestion    @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  answers         StudentAnswer[]
+  question ActivityQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers  StudentAnswer[]
 
   @@index([questionId])
 }
@@ -435,9 +453,9 @@ model StudentAnswer {
   fileId             Int?             @unique()
   file               File?            @relation(fields: [fileId], references: [id], "StudentAnswerFile")
 
-  isCorrect          Boolean?
-  score              Float?
-  feedback           String?
+  isCorrect Boolean?
+  score     Float?
+  feedback  String?
 
   @@unique([activityAttemptId, activityQuestionId])
   @@index([activityAttemptId])
@@ -508,22 +526,22 @@ model UserDevice {
 }
 
 model Notification {
-  id          Int                  @id @default(autoincrement())
-  userId      Int
-  user        User                 @relation(fields: [userId], references: [id])
-  type        NotificationType
-  title       String
-  message     String
-  data        Json?
-  status      NotificationStatus   @default(UNREAD)
-  sendStatus  NotificationSendStatus @default(PENDING)
-  sentAt      DateTime?
-  sendError   String?
-  retryCount  Int                  @default(0)
-  courseId    Int?
-  course      Course?              @relation(fields: [courseId], references: [id])
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+  id         Int                    @id @default(autoincrement())
+  userId     Int
+  user       User                   @relation(fields: [userId], references: [id])
+  type       NotificationType
+  title      String
+  message    String
+  data       Json?
+  status     NotificationStatus     @default(UNREAD)
+  sendStatus NotificationSendStatus @default(PENDING)
+  sentAt     DateTime?
+  sendError  String?
+  retryCount Int                    @default(0)
+  courseId   Int?
+  course     Course?                @relation(fields: [courseId], references: [id])
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
 
   @@index([userId])
   @@index([type])

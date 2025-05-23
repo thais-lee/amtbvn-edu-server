@@ -5,6 +5,7 @@ import { Prisma, User } from '@prisma/client';
 import { PaginatedData } from '@shared/paginated';
 
 import { PrismaService } from '@src/prisma/prisma.service';
+import { FilesService } from '../files/files.service';
 
 import { CreateUserDto } from './dto/create-user.dto';
 import { DeleteManyUsersDto } from './dto/delete-many-user.dto';
@@ -15,7 +16,10 @@ import { UpdateUserDto } from './dto/update-user.dto';
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly filesService: FilesService,
+  ) {}
 
   public async adminGetPaginated(input: AdminGetUsersDto) {
     const where: Prisma.UserWhereInput = {
@@ -132,27 +136,30 @@ export class UsersService {
     });
   }
 
-  //   public async updateAvatar(file: Express.Multer.File, user: User) {
-  //     const uploaded = await this.cloudinaryService.replaceFile(
-  //       user.avatarImageFileId,
-  //       file,
-  //       'users/avatars',
-  //     );
+  public async updateAvatar(file: Express.Multer.File, user: User) {
+    if (user.avatarImageFileUrl) {
+      try {
+        const url = new URL(user.avatarImageFileUrl);
+        const storagePath = url.pathname.split('/').slice(2).join('/');
+        await this.filesService.remove(storagePath);
+      } catch (e) {
+        this.logger.warn(`Failed to remove old avatar: ${e.message}`);
+      }
+    }
 
-  //     return await this.prisma.user.update({
-  //       where: {
-  //         id: user.id,
-  //       },
-  //       data: {
-  //         avatarImageFileId: uploaded.public_id,
-  //         avatarImageFileUrl: uploaded.url,
-  //       },
-  //       include: {
-  //         sessions: true,
-  //         userLogin: true,
-  //       },
-  //     });
-  //   }
+    const uploadResult = await this.filesService.uploadImage(file, 'users/avatars');
+
+    return await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        avatarImageFileUrl: uploadResult.url,
+      },
+      include: {
+        sessions: true,
+        userLogin: true,
+      },
+    });
+  }
 
   public async updateMe(user: User, input: UpdateUserDto) {
     return await this.prisma.user.update({
