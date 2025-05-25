@@ -120,8 +120,13 @@ export class FilesService {
         metaData,
       );
 
+      let endpointWithProtocol = this.endpoint;
+      if (!/^https?:\/\//.test(endpointWithProtocol)) {
+        endpointWithProtocol = 'http://' + endpointWithProtocol;
+      } 
+
       return {
-        filePath: `${this.bucketName}/${folder}/${file.originalname}`,
+        filePath: `${endpointWithProtocol}:${this.port}/${this.bucketName}/${folder}/${file.originalname}`,
         etag: uploadedFile.etag,
       };
     } catch (error) {

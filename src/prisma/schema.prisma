@@ -205,17 +205,18 @@ model Categories {
 
 /// -----ARTICLES-----
 model Articles {
-  id         Int           @id @default(autoincrement())
-  title      String
-  content    String        @db.Text // Change to Text type for rich text content
-  categoryId Int
-  category   Categories    @relation(fields: [categoryId], references: [id])
-  type       ArticlesType  @default(BULLETIN)
-  status     ArticleStatus @default(DRAFT)
-  likeCount  Int           @default(0)
-  viewCount  Int           @default(0)
-  updatedAt  DateTime      @updatedAt
-  createdAt  DateTime      @default(now())
+  id           Int           @id @default(autoincrement())
+  title        String
+  content      String        @db.Text // Change to Text type for rich text content
+  categoryId   Int
+  category     Categories    @relation(fields: [categoryId], references: [id])
+  type         ArticlesType  @default(BULLETIN)
+  status       ArticleStatus @default(DRAFT)
+  likeCount    Int           @default(0)
+  viewCount    Int           @default(0)
+  thumbnailUrl String? // Add thumbnail URL field
+  updatedAt    DateTime      @updatedAt
+  createdAt    DateTime      @default(now())
 
   userId Int
   user   User @relation(fields: [userId], references: [id])

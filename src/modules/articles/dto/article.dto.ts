@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import { ArticleStatus, ArticlesType } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsEnum,
@@ -50,6 +50,9 @@ export class ArticleDto {
   @ApiProperty()
   viewCount: number;
 
+  @ApiProperty({ required: false })
+  thumbnailUrl?: string;
+
   @ApiProperty()
   createdAt: Date;
 
@@ -74,6 +77,7 @@ export class CreateArticleDto {
   @ApiProperty()
   @IsInt()
   @IsNotEmpty()
+  @Transform(({ value }) => Number(value))
   categoryId: number;
 
   @ApiProperty({ enum: ArticlesType })
@@ -85,14 +89,19 @@ export class CreateArticleDto {
   @IsOptional()
   status?: ArticleStatus;
 
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  thumbnailUrl?: string;
+
   @ApiPropertyOptional({
     type: [ArticleImageDto],
     description: 'Array of image file IDs and their order',
   })
-  @IsOptional() // Cho phép không gửi ảnh nào
-  @IsArray() // Phải là một mảng
-  @ValidateNested({ each: true }) // Validate từng object trong mảng
-  @Type(() => ArticleImageDto) // Chỉ định class để transform và validate
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ArticleImageDto)
   images?: ArticleImageDto[];
 }
 
@@ -121,6 +130,11 @@ export class UpdateArticleDto {
   @IsEnum(ArticleStatus)
   @IsOptional()
   status?: ArticleStatus;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  thumbnailUrl?: string;
 
   @ApiProperty({ type: [ArticleImageDto], required: false })
   @ValidateNested({ each: true })

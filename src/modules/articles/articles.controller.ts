@@ -7,17 +7,22 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+import { ERole, User } from '@prisma/client';
+
 import { ApiArrayResponse, ApiResponse } from '@shared/response';
+
+import { FilesService } from '@modules/files/files.service';
 
 import { CurrentUser } from '@src/decorators/current-user.decorator';
 import { JwtAuth } from '@src/decorators/jwt-auth.decorator';
 import { RolesAuth } from '@src/decorators/roles-auth.decorator';
 import { TransformResponseInterceptor } from '@src/interceptors/transform-response.interceptor';
-import { ERole, User } from '@prisma/client';
 
 import { ArticlesService } from './articles.service';
 import { ArticleDto } from './dto/article.dto';
@@ -31,12 +36,25 @@ import { UpdateArticleDto } from './dto/article.dto';
 @JwtAuth()
 @UseInterceptors(TransformResponseInterceptor)
 export class ArticlesController {
-  constructor(private readonly articlesService: ArticlesService) {}
+  constructor(
+    private readonly articlesService: ArticlesService,
+    private readonly fileService: FilesService,
+  ) {}
 
   @Post()
   @ApiResponse(ArticleDto)
   @RolesAuth([ERole.ADMIN, ERole.TEACHER])
-  create(@Body() createArticleDto: CreateArticleDto, @CurrentUser() user: User) {
+  @UseInterceptors(FileInterceptor('file'))
+  async create(
+    @Body() createArticleDto: CreateArticleDto,
+    @CurrentUser() user: User,
+    @UploadedFile() thumbnail?: Express.Multer.File,
+  ) {
+    let thumbnailUrl: string | undefined;
+    if (thumbnail) {
+      thumbnailUrl = (await this.fileService.uploadFile(thumbnail)).filePath;
+    }
+    createArticleDto.thumbnailUrl = thumbnailUrl;
     return this.articlesService.create(createArticleDto, user.id);
   }
 
@@ -71,4 +89,4 @@ export class ArticlesController {
   likeArticle(@Param('id') id: number) {
     return this.articlesService.likeArticle(id);
   }
-} 
+}
