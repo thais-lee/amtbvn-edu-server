@@ -6,6 +6,8 @@ import {
 
 import { ArticleStatus, ArticlesType, Prisma } from '@prisma/client';
 
+import { FilesService } from '@modules/files/files.service';
+
 import { PrismaService } from '@src/prisma/prisma.service';
 
 import {
@@ -13,10 +15,14 @@ import {
   GetArticlesDto,
   UpdateArticleDto,
 } from './dto/article.dto';
+import { DeleteManyArticleDto } from './dto/delete-many-article';
 
 @Injectable()
 export class ArticlesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly filesService: FilesService,
+  ) {}
 
   async create(createArticleDto: CreateArticleDto, userId: number) {
     const { images, ...articleData } = createArticleDto;
@@ -208,21 +214,32 @@ export class ArticlesService {
     return article;
   }
 
-  async remove(id: number) {
-    const article = await this.prisma.articles.findUnique({
-      where: { id },
-    });
-
-    if (!article) {
-      throw new NotFoundException('Article not found');
-    }
+  async deleteOne(id: number) {
+    const article = await this.findOne(id);
 
     // Delete article and its images
+    await this.filesService.remove(article.thumbnailUrl.split('/').pop());
     await this.prisma.articles.delete({
       where: { id },
     });
 
     return article;
+  }
+
+  async deleteMany(input: DeleteManyArticleDto) {
+    const articles = await this.prisma.articles.findMany({
+      where: {
+        id: {
+          in: input.ids,
+        },
+      },
+    });
+
+    for (const article of articles) {
+      await this.deleteOne(article.id);
+    }
+
+    return true;
   }
 
   async likeArticle(id: number) {

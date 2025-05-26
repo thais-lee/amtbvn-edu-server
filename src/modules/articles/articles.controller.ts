@@ -23,12 +23,14 @@ import { CurrentUser } from '@src/decorators/current-user.decorator';
 import { JwtAuth } from '@src/decorators/jwt-auth.decorator';
 import { RolesAuth } from '@src/decorators/roles-auth.decorator';
 import { TransformResponseInterceptor } from '@src/interceptors/transform-response.interceptor';
+import { PrismaService } from '@src/prisma/prisma.service';
 
 import { ArticlesService } from './articles.service';
 import { ArticleDto } from './dto/article.dto';
 import { CreateArticleDto } from './dto/article.dto';
 import { GetArticlesDto } from './dto/article.dto';
 import { UpdateArticleDto } from './dto/article.dto';
+import { DeleteManyArticleDto } from './dto/delete-many-article';
 
 @Controller('articles')
 @ApiTags('Articles')
@@ -39,6 +41,7 @@ export class ArticlesController {
   constructor(
     private readonly articlesService: ArticlesService,
     private readonly fileService: FilesService,
+    private readonly prismaService: PrismaService,
   ) {}
 
   @Post()
@@ -77,11 +80,18 @@ export class ArticlesController {
     return this.articlesService.update(id, updateArticleDto);
   }
 
-  @Delete(':id')
+  @Delete('admin/delete/:id')
   @ApiResponse(Boolean)
   @RolesAuth([ERole.ADMIN, ERole.TEACHER])
   remove(@Param('id') id: number) {
-    return this.articlesService.remove(id);
+    return this.articlesService.deleteOne(id);
+  }
+
+  @Delete('admin/delete-many')
+  @ApiResponse(Boolean)
+  @RolesAuth([ERole.ADMIN])
+  deleteMany(@Body() input: DeleteManyArticleDto) {
+    return this.articlesService.deleteMany(input);
   }
 
   @Post(':id/like')
