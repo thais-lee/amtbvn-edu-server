@@ -4,9 +4,9 @@ import { ActivityType } from '@prisma/client';
 import { Transform } from 'class-transformer';
 import { IsEnum, IsOptional } from 'class-validator';
 
-import { SearchInput } from '@shared/base-get-input';
+import { PaginatedSearchSortInput } from '@shared/base-get-input';
 
-export class GetActivityDto extends SearchInput {
+export class GetActivityDto extends PaginatedSearchSortInput {
   @ApiPropertyOptional()
   @IsOptional()
   @Transform(({ value }) => Number(value))

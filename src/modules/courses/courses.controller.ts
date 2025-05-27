@@ -44,6 +44,18 @@ export class CoursesController {
     return this.coursesService.findAll(query);
   }
 
+  @Get('/admin/all')
+  @ApiArrayResponse(CourseDto)
+  findAllAdmin(@Query() query: GetCoursesDto) {
+    return this.coursesService.findAll(query);
+  }
+
+  @Get('/admin/get-by-slug/:slug')
+  @ApiResponse(CourseDto)
+  findOneAdmin(@Param('slug') slug: string) {
+    return this.coursesService.findOneBySlug(slug);
+  }
+
   @Get('/me')
   @ApiArrayResponse(CourseDto)
   findAllByStudent(@Query() query: GetCoursesDto, @CurrentUser() user) {

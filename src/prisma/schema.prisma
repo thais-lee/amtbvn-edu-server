@@ -313,6 +313,7 @@ model ActivityMaterial {
 model Course {
   id            Int          @id @default(autoincrement())
   name          String
+  slug          String?      @unique
   description   String?
   imageFileUrl  String?
   bannerFileUrl String?

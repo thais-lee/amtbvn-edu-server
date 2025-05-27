@@ -13,10 +13,14 @@ import { FilesService } from '@modules/files/files.service';
 
 import { PrismaService } from '@src/prisma/prisma.service';
 
+import {
+  GetActivityAttemptsDto,
+  StartActivityAttemptDto,
+  SubmitActivityAttemptDto,
+} from './dto/activity-attempt.dto';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { GetActivityDto } from './dto/get-lesson-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
-import { GetActivityAttemptsDto, StartActivityAttemptDto, SubmitActivityAttemptDto } from './dto/activity-attempt.dto';
 
 @Injectable()
 export class ActivityService {
@@ -93,8 +97,8 @@ export class ActivityService {
               options: {
                 create: question.options.map((option) => ({
                   text: option.text,
-                  isCorrect: option.isCorrect
-                }))
+                  isCorrect: option.isCorrect,
+                })),
               },
             })),
           },
@@ -188,14 +192,33 @@ export class ActivityService {
 
   async findAll(input: GetActivityDto) {
     return this.prisma.activity.findMany({
-      where: input,
+      where: {
+        courseId: input.courseId ? input.courseId : undefined,
+        lessonId: input.lessonId ? input.lessonId : undefined,
+        type: input.type ? input.type : undefined,
+        title: {
+          contains: input.search,
+          mode: 'insensitive',
+        },
+      },
+      orderBy: {
+        [input.sort]: input.order,
+        createdAt: 'desc',
+      },
       include: {
         materials: {
           include: {
             File: true,
           },
         },
+        questions: {
+          include: {
+            options: true,
+          },
+        },
       },
+      take: input.take,
+      skip: input.skip,
     });
   }
 
@@ -260,8 +283,8 @@ export class ActivityService {
 
       // Handle file removals
       if (input.fileIdsToRemove && input.fileIdsToRemove.length > 0) {
-        const filesToRemove = existingActivity.materials.filter(material => 
-          input.fileIdsToRemove.includes(material.fileId)
+        const filesToRemove = existingActivity.materials.filter((material) =>
+          input.fileIdsToRemove.includes(material.fileId),
         );
 
         for (const material of filesToRemove) {
@@ -314,15 +337,16 @@ export class ActivityService {
           where: { id },
           data: {
             ...input,
-            materials: createdFilesData.length > 0
-              ? {
-                  createMany: {
-                    data: createdFilesData.map((fileData) => ({
-                      fileId: fileData.fileRecord.id,
-                    })),
-                  },
-                }
-              : undefined,
+            materials:
+              createdFilesData.length > 0
+                ? {
+                    createMany: {
+                      data: createdFilesData.map((fileData) => ({
+                        fileId: fileData.fileRecord.id,
+                      })),
+                    },
+                  }
+                : undefined,
           },
           include: {
             materials: {
@@ -451,7 +475,11 @@ export class ActivityService {
     });
   }
 
-  async submitAttempt(attemptId: number, input: SubmitActivityAttemptDto, studentId: number) {
+  async submitAttempt(
+    attemptId: number,
+    input: SubmitActivityAttemptDto,
+    studentId: number,
+  ) {
     return this.prisma.$transaction(async (prisma) => {
       // Check if attempt exists and belongs to student
       const attempt = await prisma.activityAttempt.findUnique({
@@ -470,7 +498,9 @@ export class ActivityService {
       }
 
       if (attempt.completedAt) {
-        throw new BadRequestException('This attempt has already been submitted');
+        throw new BadRequestException(
+          'This attempt has already been submitted',
+        );
       }
 
       // Check if time limit has been exceeded
@@ -492,7 +522,9 @@ export class ActivityService {
         });
 
         if (!question) {
-          throw new NotFoundException(`Question ${answer.questionId} not found`);
+          throw new NotFoundException(
+            `Question ${answer.questionId} not found`,
+          );
         }
 
         const isCorrect = answer.answer === question.correctAnswer;

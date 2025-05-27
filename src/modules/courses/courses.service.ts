@@ -21,7 +21,9 @@ export class CoursesService {
       throw new NotFoundException('Category not found');
     }
     return this.prisma.course.create({
-      data: input,
+      data: {
+        ...input,
+      },
     });
   }
 
@@ -47,6 +49,21 @@ export class CoursesService {
     return this.prisma.course.findUnique({
       where: {
         id,
+      },
+      include: {
+        category: true,
+        enrollments: true,
+        lessons: true,
+        activities: true,
+        libraryMaterialsUsed: true,
+      },
+    });
+  }
+
+  async findOneBySlug(slug: string) {
+    return this.prisma.course.findUnique({
+      where: {
+        slug,
       },
       include: {
         category: true,
@@ -104,6 +121,7 @@ export class CoursesService {
           select: {
             id: true,
             name: true,
+            slug: true,
             categoryId: true,
             status: true,
             createdAt: true,

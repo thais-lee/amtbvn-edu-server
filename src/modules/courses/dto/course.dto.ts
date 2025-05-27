@@ -8,6 +8,9 @@ export class CourseDto {
     @ApiProperty()
     name: string;
 
+    @ApiProperty()
+    slug: string;
+
     @ApiPropertyOptional()
     description?: string;
 
