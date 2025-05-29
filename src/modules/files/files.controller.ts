@@ -16,13 +16,14 @@ import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 
 import { ApiResponse } from '@shared/response';
 
+import { UserBasicDto } from '@modules/users/dto/user.dto';
+
 import { CurrentUser } from '@src/decorators/current-user.decorator';
 import { JwtAuth } from '@src/decorators/jwt-auth.decorator';
 import { TransformResponseInterceptor } from '@src/interceptors/transform-response.interceptor';
 
 import { BufferedFile, FileDto, Folder } from './dto/file.dto';
 import { FilesService } from './files.service';
-import { UserBasicDto } from '@modules/users/dto/user.dto';
 
 @Controller('files')
 @ApiTags('Files')
@@ -77,27 +78,28 @@ export class FilesController {
         },
         folder: {
           type: 'string',
-          description: 'Optional subfolder in the bucket (e.g., articles, avatars)',
+          description:
+            'Optional subfolder in the bucket (e.g., articles, avatars)',
           default: 'files',
         },
         description: {
           type: 'string',
           description: 'Optional file description',
-        }
+        },
       },
       required: ['file'],
     },
   })
-  
   @UseInterceptors(FileInterceptor('file')) // Sử dụng interceptor để xử lý file upload field 'file'
   @ApiResponse(FileDto) // Định nghĩa kiểu dữ liệu trả về trong Swagger
   async uploadAndRecordFile(
     @UploadedFile() file: Express.Multer.File, // Lấy file đã upload
-    @CurrentUser() user: UserBasicDto,          // Lấy thông tin user đang đăng nhập
-    @Body('folder') folder?: string,    // Lấy folder từ body (optional)
+    @CurrentUser() user: UserBasicDto, // Lấy thông tin user đang đăng nhập
+    @Body('folder') folder?: string, // Lấy folder từ body (optional)
     @Body('description') description?: string, // Lấy description từ body (optional)
-  ): Promise<FileDto> { // Trả về FileDto
-    const createdFile = await this.filesService.uploadFileAndRecord(
+  ): Promise<FileDto> {
+    // Trả về FileDto
+    const createdFile = await this.filesService.uploadFileAndRecordNoTx(
       file,
       folder || 'files', // Sử dụng folder hoặc mặc định là 'files'
       user.id,
@@ -105,21 +107,23 @@ export class FilesController {
     );
 
     // Lấy presigned URL để truy cập file (nếu cần trả về URL)
-    const accessUrl = await this.filesService.getPresignedUrl(createdFile.storagePath);
+    const accessUrl = await this.filesService.getPresignedUrl(
+      createdFile.storagePath,
+    );
 
     // Map dữ liệu từ Prisma model sang DTO để trả về response
     // Thêm URL vào DTO nếu cần
     const fileResponse: FileDto = {
-        id: createdFile.id,
-        fileName: createdFile.fileName,
-        description: createdFile.description,
-        storagePath: createdFile.storagePath,
-        mimeType: createdFile.mimeType,
-        size: createdFile.size,
-        uploadedBy: createdFile.uploadedBy,
-        createdAt: createdFile.createdAt,
-        updatedAt: createdFile.updatedAt,
-        accessUrl: accessUrl, // Thêm URL truy cập
+      id: createdFile.id,
+      fileName: createdFile.fileName,
+      description: createdFile.description,
+      storagePath: createdFile.storagePath,
+      mimeType: createdFile.mimeType,
+      size: createdFile.size,
+      uploadedBy: createdFile.uploadedBy,
+      createdAt: createdFile.createdAt,
+      updatedAt: createdFile.updatedAt,
+      accessUrl: accessUrl, // Thêm URL truy cập
     };
     return fileResponse;
   }
@@ -127,9 +131,10 @@ export class FilesController {
   // Endpoint để lấy presigned URL (có thể giữ lại hoặc không tùy nhu cầu)
   @Get('file-url/:id')
   @ApiResponse(String) // Trả về chuỗi URL
-  async getPresignedFileUrl(@Param('id', ParseIntPipe) id: number): Promise<{ url: string }> {
+  async getPresignedFileUrl(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{ url: string }> {
     const url = await this.filesService.getPresignedUrlById(id);
     return { url };
   }
-
 }

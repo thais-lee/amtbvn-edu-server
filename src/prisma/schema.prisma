@@ -190,17 +190,18 @@ model UserSession {
 
 /// -----CATEGORIES-----
 model Categories {
-  id             Int          @id @default(autoincrement())
-  name           String
-  slug           String?      @unique()
-  imageUrl       String?
-  parentId       Int?
-  parentCategory Categories?  @relation("CategoriesToCategories", fields: [parentId], references: [id])
-  subCategories  Categories[] @relation("CategoriesToCategories")
-  articles       Articles[]
-  courses        Course[]
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id               Int               @id @default(autoincrement())
+  name             String
+  slug             String?           @unique()
+  imageUrl         String?
+  parentId         Int?
+  parentCategory   Categories?       @relation("CategoriesToCategories", fields: [parentId], references: [id])
+  subCategories    Categories[]      @relation("CategoriesToCategories")
+  articles         Articles[]
+  courses          Course[]
+  libraryMaterials LibraryMaterial[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 }
 
 /// -----ARTICLES-----
@@ -253,8 +254,9 @@ model File {
   lessonAttachments LessonAttachment[]
   activityMaterials ActivityMaterial[] /// Tài liệu cho Activity
   studentAnswerFile StudentAnswer?     @relation("StudentAnswerFile") /// File nộp bài của học viên (qua StudentAnswer)
-  libraryResource   LibraryMaterial?
   articleImages     ArticleImage[] /// Images used in articles
+  libraryMaterialId Int?
+  libraryMaterial   LibraryMaterial?   @relation("LibraryMaterialFiles", fields: [libraryMaterialId], references: [id])
 }
 
 /// Model Tài liệu Thư viện
@@ -264,10 +266,12 @@ model LibraryMaterial {
   description String?
   tags        String[]
 
-  fileId Int  @unique
-  File   File @relation(fields: [fileId], references: [id], onDelete: Cascade) /// Hoặc Restrict
-
+  files         File[]               @relation("LibraryMaterialFiles")
+  categoryId    Int
+  category      Categories           @relation(fields: [categoryId], references: [id])
   usedInCourses CourseLibraryUsage[] /// Khóa học sử dụng
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
 }
 
 /// Bảng trung gian Course <-> LibraryMaterial

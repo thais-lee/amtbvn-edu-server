@@ -11,15 +11,13 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import * as crypto from 'crypto';
 import * as Minio from 'minio';
+import { v4 as uuidv4 } from 'uuid';
 
 import { TConfigs } from '@configs/index';
 import { TStorageConfig } from '@configs/storage.config';
 
 import { InjectMinio } from '@src/decorators/minio.decorator';
 import { PrismaService } from '@src/prisma/prisma.service';
-
-import { BufferedFile, FileDto, Folder } from './dto/file.dto';
-import { UpdateFileDto } from './dto/update-file.dto';
 
 @Injectable()
 export class FilesService {
@@ -123,7 +121,7 @@ export class FilesService {
       let endpointWithProtocol = this.endpoint;
       if (!/^https?:\/\//.test(endpointWithProtocol)) {
         endpointWithProtocol = 'http://' + endpointWithProtocol;
-      } 
+      }
 
       return {
         filePath: `${endpointWithProtocol}:${this.port}/${this.bucketName}/${folder}/${file.originalname}`,
@@ -162,11 +160,21 @@ export class FilesService {
    * and returns the created File record.
    */
   public async uploadFileAndRecord(
+    prisma: PrismaService | Prisma.TransactionClient,
     file: Express.Multer.File, // Sử dụng BufferedFile hoặc Express.Multer.File tùy theo interceptor
     folder: string = 'files',
     userId: number,
     description?: string,
+    libraryMaterialId?: number,
   ): Promise<Prisma.FileGetPayload<{}>> {
+    // Debug log for all arguments
+    this.logger.log('uploadFileAndRecord args:', {
+      file: file ? file.originalname : file,
+      folder,
+      userId,
+      description,
+      libraryMaterialId,
+    });
     // Trả về File object từ Prisma
     try {
       const timestamp = Date.now().toString();
@@ -174,12 +182,19 @@ export class FilesService {
         .createHash('md5')
         .update(timestamp + file.originalname) // Thêm originalname để tăng tính duy nhất
         .digest('hex');
+
       const extension = file.originalname.substring(
         file.originalname.lastIndexOf('.'),
         file.originalname.length,
       );
-      const storagePath = `<span class="math-inline">\{folder\}/</span>{hashedFileName}${extension}`;
 
+      let endpointWithProtocol = this.endpoint;
+      if (!/^https?:\/\//.test(endpointWithProtocol)) {
+        endpointWithProtocol = 'http://' + endpointWithProtocol;
+      }
+
+      const storagePath = `${folder}/${hashedFileName}`;
+      const fileUrl = `${endpointWithProtocol}:${this.port}/${this.bucketName}/${storagePath}${extension}`;
       const metaData = {
         'Content-Type': file.mimetype,
       };
@@ -195,14 +210,15 @@ export class FilesService {
       this.logger.log(`File uploaded to Minio: ${storagePath}`);
 
       // 2. Create File record in Database
-      const fileRecord = await this.prisma.file.create({
+      const fileRecord = await prisma.file.create({
         data: {
           fileName: file.originalname, // Lưu tên gốc
-          storagePath: storagePath, // Lưu đường dẫn trên Minio
+          storagePath: fileUrl, // Lưu đường dẫn trên Minio
           mimeType: file.mimetype,
           size: file.size,
           uploadedBy: userId,
           description: description, // Thêm description nếu có
+          libraryMaterialId: libraryMaterialId ?? undefined,
         },
       });
       this.logger.log(`File record created in DB: ID ${fileRecord.id}`);
@@ -214,6 +230,41 @@ export class FilesService {
       // await this.remove(storagePath).catch(e => this.logger.error(`Rollback failed: ${e.stack}`));
       throw new BadRequestException('Failed to upload file');
     }
+  }
+
+  public async uploadFileAndRecordNoTx(
+    file: Express.Multer.File,
+    folder: string = 'files',
+    userId: number,
+    description?: string,
+    libraryMaterialId?: number,
+  ) {
+    return this.uploadFileAndRecord(
+      this.prisma,
+      file,
+      folder,
+      userId,
+      description,
+      libraryMaterialId,
+    );
+  }
+
+  public async uploadFileAndRecordMultiple(
+    files: Express.Multer.File[],
+    folder: string = 'files',
+    userId: number,
+    description?: string,
+  ) {
+    for (const file of files) {
+      await this.uploadFileAndRecord(
+        this.prisma,
+        file,
+        folder,
+        userId,
+        description,
+      );
+    }
+    return;
   }
 
   /**

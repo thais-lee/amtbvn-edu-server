@@ -27,6 +27,7 @@ import { LessonsModule } from './modules/lessons/lessons.module';
 import { ActivityModule } from './modules/activities/activity.module';
 import { ArticlesModule } from '@modules/articles/articles.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { LibraryMaterialsModule } from './modules/library-materials/library-materials.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     ActivityModule,
     ArticlesModule,
     NotificationsModule,
+    LibraryMaterialsModule,
   ],
   controllers: [UsersController],
   providers: [UsersService],
