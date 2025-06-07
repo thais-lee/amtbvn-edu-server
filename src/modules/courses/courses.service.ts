@@ -122,10 +122,13 @@ export class CoursesService {
             id: true,
             name: true,
             slug: true,
+            description: true,
             categoryId: true,
             status: true,
             createdAt: true,
             updatedAt: true,
+            imageFileUrl: true,
+            bannerFileUrl: true,
             category: {
               select: {
                 name: true,

@@ -5,6 +5,9 @@ export class CategoryDto {
   name: string;
 
   @ApiPropertyOptional()
+  description?: string;
+
+  @ApiPropertyOptional()
   parentId?: number;
 
   @ApiProperty()

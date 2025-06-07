@@ -39,7 +39,9 @@ export class CategoriesService {
       where: where,
       skip: query.skip,
       take: query.take,
-      orderBy: { createdAt: 'desc' },
+      orderBy: {
+        createdAt: 'asc',
+      },
       include: {
         _count: {
           select: {

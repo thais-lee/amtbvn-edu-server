@@ -192,7 +192,8 @@ model UserSession {
 model Categories {
   id               Int               @id @default(autoincrement())
   name             String
-  slug             String?           @unique()
+  slug             String            @unique()
+  description      String?
   imageUrl         String?
   parentId         Int?
   parentCategory   Categories?       @relation("CategoriesToCategories", fields: [parentId], references: [id])
@@ -209,8 +210,8 @@ model Articles {
   id           Int           @id @default(autoincrement())
   title        String
   content      String        @db.Text // Change to Text type for rich text content
-  categoryId   Int
-  category     Categories    @relation(fields: [categoryId], references: [id])
+  categoryId   Int?
+  category     Categories?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   type         ArticlesType  @default(BULLETIN)
   status       ArticleStatus @default(DRAFT)
   likeCount    Int           @default(0)
@@ -267,8 +268,8 @@ model LibraryMaterial {
   tags        String[]
 
   files         File[]               @relation("LibraryMaterialFiles")
-  categoryId    Int
-  category      Categories           @relation(fields: [categoryId], references: [id])
+  categoryId    Int?
+  category      Categories?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   usedInCourses CourseLibraryUsage[] /// Khóa học sử dụng
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
@@ -321,8 +322,8 @@ model Course {
   description   String?
   imageFileUrl  String?
   bannerFileUrl String?
-  categoryId    Int
-  category      Categories   @relation(fields: [categoryId], references: [id])
+  categoryId    Int?
+  category      Categories?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   status        CourseStatus @default(PUBLIC)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt

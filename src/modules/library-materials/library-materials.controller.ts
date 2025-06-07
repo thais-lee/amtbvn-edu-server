@@ -22,6 +22,7 @@ import { JwtAuth } from '@src/decorators/jwt-auth.decorator';
 import { TransformResponseInterceptor } from '@src/interceptors/transform-response.interceptor';
 
 import { CreateLibraryMaterialDto } from './dto/create-library-material.dto';
+import { DeleteManyLibraryMaterialDto } from './dto/delete-many-library-material';
 import { GetLibraryMaterialDto } from './dto/get-library-material.dto';
 import { LibraryMaterialDto } from './dto/library-material.dto';
 import { UpdateLibraryMaterialDto } from './dto/update-library-material.dto';
@@ -90,5 +91,10 @@ export class LibraryMaterialsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.libraryMaterialsService.remove(+id);
+  }
+
+  @Delete('delete-many')
+  deleteMany(@Body() input: DeleteManyLibraryMaterialDto) {
+    return this.libraryMaterialsService.removeMany(input.ids);
   }
 }

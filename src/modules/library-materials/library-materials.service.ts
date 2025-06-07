@@ -157,7 +157,7 @@ export class LibraryMaterialsService {
 
   async findOne(id: number) {
     const libraryMaterial = await this.prisma.libraryMaterial.findUnique({
-      where: { id },
+      where: { id: id },
       include: {
         files: true,
         category: true,
@@ -197,6 +197,22 @@ export class LibraryMaterialsService {
     // Then delete the library material
     return this.prisma.libraryMaterial.delete({
       where: { id },
+    });
+  }
+
+  async removeMany(ids: number[]) {
+    return this.prisma.$transaction(async (prisma) => {
+      await prisma.file.deleteMany({
+        where: {
+          libraryMaterialId: { in: ids },
+        },
+      });
+
+      await prisma.libraryMaterial.deleteMany({
+        where: { id: { in: ids } },
+      });
+
+      return { message: 'Library materials deleted successfully' };
     });
   }
 }
