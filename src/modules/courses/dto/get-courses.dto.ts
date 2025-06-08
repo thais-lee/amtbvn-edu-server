@@ -1,6 +1,6 @@
 import { CourseStatus } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsOptional } from 'class-validator';
 
 import { SearchSortInput } from '@shared/base-get-input';
 
@@ -13,4 +13,8 @@ export class GetCoursesDto extends SearchSortInput {
   @IsOptional()
   @IsEnum(CourseStatus)
   status?: CourseStatus;
+
+  @IsOptional()
+  @IsBoolean()
+  requireApproval?: boolean;
 }

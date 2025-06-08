@@ -24,6 +24,9 @@ export class CourseDto {
     categoryId: number;
 
     @ApiPropertyOptional()
+    requireApproval?: boolean;
+
+    @ApiPropertyOptional()
     status: CourseStatus;
 
     @ApiPropertyOptional()

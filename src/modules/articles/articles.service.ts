@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { ArticleStatus, ArticlesType, Prisma } from '@prisma/client';
+import { ArticleStatus, ArticlesType, ERole, Prisma } from '@prisma/client';
 
 import { FilesService } from '@modules/files/files.service';
 
@@ -120,7 +120,7 @@ export class ArticlesService {
     };
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, userRoles: ERole[] = []) {
     const article = await this.prisma.articles.findUnique({
       where: { id },
       include: {
@@ -145,11 +145,13 @@ export class ArticlesService {
       throw new NotFoundException('Article not found');
     }
 
-    // Increment view count
-    await this.prisma.articles.update({
-      where: { id },
-      data: { viewCount: { increment: 1 } },
-    });
+    // If user is not admin, increment view count
+    if (!userRoles.includes(ERole.ADMIN)) {
+      await this.prisma.articles.update({
+        where: { id },
+        data: { viewCount: { increment: 1 } },
+      });
+    }
 
     return article;
   }

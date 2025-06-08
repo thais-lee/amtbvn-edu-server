@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
 import { CourseStatus } from '@prisma/client';
-import { IsString, IsOptional } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class CreateCourseDto {
   @ApiProperty()
@@ -22,4 +23,9 @@ export class CreateCourseDto {
   @ApiPropertyOptional({ enum: CourseStatus })
   @IsOptional()
   status?: CourseStatus;
+
+  @ApiPropertyOptional()
+  @IsBoolean()
+  @IsOptional()
+  requireApproval?: boolean;
 }

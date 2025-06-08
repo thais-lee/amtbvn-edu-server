@@ -69,8 +69,8 @@ export class ArticlesController {
 
   @Get(':id')
   @ApiResponse(ArticleDto)
-  findOne(@Param('id') id: number) {
-    return this.articlesService.findOne(id);
+  findOne(@Param('id') id: number, @CurrentUser() user: User) {
+    return this.articlesService.findOne(+id, user.roles);
   }
 
   @Patch(':id')

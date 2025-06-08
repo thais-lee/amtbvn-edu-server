@@ -147,6 +147,7 @@ export class GetArticlesDto extends PaginatedSearchSortInput {
   @ApiProperty({ required: false })
   @IsInt()
   @IsOptional()
+  @Transform(({ value }) => Number(value))
   categoryId?: number;
 
   @ApiProperty({ enum: ArticlesType, required: false })

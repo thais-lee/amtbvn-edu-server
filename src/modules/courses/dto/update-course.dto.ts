@@ -1,6 +1,12 @@
 import { CourseStatus } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsInt, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class UpdateCourseDto {
   @IsOptional()
@@ -20,5 +26,11 @@ export class UpdateCourseDto {
   @Transform((param) => Number(param.value))
   categoryId?: number;
 
+  @IsOptional()
+  @IsBoolean()
+  requireApproval?: boolean;
+
+  @IsOptional()
+  @IsEnum(CourseStatus)
   status?: CourseStatus;
 }

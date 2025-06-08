@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
+import { EnrollmentStatus } from '@prisma/client';
+
 import { PrismaService } from '@src/prisma/prisma.service';
 
 import { CreateCourseDto } from './dto/create-course.dto';
@@ -28,7 +30,7 @@ export class CoursesService {
   }
 
   async findAll(input: GetCoursesDto) {
-    return this.prisma.course.findMany({
+    const courses = await this.prisma.course.findMany({
       where: {
         name: input.search
           ? {
@@ -42,7 +44,29 @@ export class CoursesService {
       orderBy: {
         createdAt: input.order,
       },
+      include: {
+        category: {
+          select: {
+            name: true,
+          },
+        },
+        _count: {
+          select: {
+            enrollments: {
+              where: {
+                status: EnrollmentStatus.ACCEPTED,
+              },
+            },
+            lessons: true,
+          },
+        },
+      },
     });
+
+    return {
+      items: courses,
+      total: courses.length,
+    };
   }
 
   async findOne(id: number) {
@@ -115,6 +139,7 @@ export class CoursesService {
           categoryId: input.categoryId ? input.categoryId : undefined,
           status: input.status ? input.status : undefined,
         },
+        status: EnrollmentStatus.ACCEPTED,
       },
       include: {
         course: {
