@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
+import { EnrollmentStatus } from '@prisma/client';
 
 import { PrismaService } from '@src/prisma/prisma.service';
 
@@ -11,12 +17,22 @@ export class EnrollmentsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createEnrollmentDto: CreateEnrollmentDto) {
-    await this.checkCourseExists(createEnrollmentDto.courseId);
+    await this.checkAlreadyEnrolled(
+      createEnrollmentDto.userId,
+      createEnrollmentDto.courseId,
+    );
+
+    const course = await this.checkCourseExists(createEnrollmentDto.courseId);
+
+    if (!course.requireApproval) {
+      createEnrollmentDto.status = EnrollmentStatus.ACCEPTED;
+    }
 
     return this.prisma.studentCourseEnrollment.create({
       data: {
         courseId: createEnrollmentDto.courseId,
         userId: createEnrollmentDto.userId,
+        status: createEnrollmentDto.status || EnrollmentStatus.PENDING,
       },
     });
   }
@@ -84,6 +100,20 @@ export class EnrollmentsService {
     });
   }
 
+  private async checkAlreadyEnrolled(userId: number, courseId: number) {
+    const enroll = await this.prisma.studentCourseEnrollment.findUnique({
+      where: {
+        userId_courseId: {
+          courseId,
+          userId,
+        },
+      },
+    });
+    if (enroll) {
+      throw new BadRequestException({ message: 'Already enrolled' });
+    }
+  }
+
   private async checkCourseExists(courseId: number) {
     const course = await this.prisma.course.findUnique({
       where: {
@@ -93,5 +123,6 @@ export class EnrollmentsService {
     if (!course) {
       throw new NotFoundException('Course not found');
     }
+    return course;
   }
 }

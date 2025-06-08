@@ -18,3 +18,20 @@ export class GetCoursesDto extends SearchSortInput {
   @IsBoolean()
   requireApproval?: boolean;
 }
+
+export class GetCourseMemberDto extends SearchSortInput {
+  @IsOptional()
+  @IsInt()
+  @Transform((param) => Number(param.value))
+  courseId?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Transform((param) => Number(param.value))
+  take?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Transform((param) => Number(param.value))
+  skip?: number;
+}

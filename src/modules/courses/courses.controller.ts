@@ -21,7 +21,7 @@ import { TransformResponseInterceptor } from '@src/interceptors/transform-respon
 import { CoursesService } from './courses.service';
 import { CourseDto } from './dto/course.dto';
 import { CreateCourseDto } from './dto/create-course.dto';
-import { GetCoursesDto } from './dto/get-courses.dto';
+import { GetCourseMemberDto, GetCoursesDto } from './dto/get-courses.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 
 @Controller('courses')
@@ -62,10 +62,10 @@ export class CoursesController {
     return this.coursesService.findEnrolledCourse(user.id, query);
   }
 
-  @Get(':id/member')
+  @Get('/member')
   @ApiArrayResponse(CourseDto)
-  getCourseMember(@Param('id') courseId: number) {
-    return this.coursesService.findCourseMember(courseId);
+  getCourseMember(@Query() query: GetCourseMemberDto) {
+    return this.coursesService.findCourseMember(query);
   }
 
   @Get(':id')

@@ -5,7 +5,7 @@ import { EnrollmentStatus } from '@prisma/client';
 import { PrismaService } from '@src/prisma/prisma.service';
 
 import { CreateCourseDto } from './dto/create-course.dto';
-import { GetCoursesDto } from './dto/get-courses.dto';
+import { GetCourseMemberDto, GetCoursesDto } from './dto/get-courses.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 
 @Injectable()
@@ -99,10 +99,10 @@ export class CoursesService {
     });
   }
 
-  async findCourseMember(courseId: number) {
-    return this.prisma.studentCourseEnrollment.findMany({
+  async findCourseMember(input: GetCourseMemberDto) {
+    const enrollments = await this.prisma.studentCourseEnrollment.findMany({
       where: {
-        courseId,
+        courseId: input.courseId,
       },
       include: {
         user: {
@@ -122,7 +122,17 @@ export class CoursesService {
           },
         },
       },
+      skip: input.skip,
+      take: input.take,
+      orderBy: {
+        enrolledAt: input.order ? input.order : 'desc',
+      },
     });
+
+    return {
+      items: enrollments,
+      total: enrollments.length,
+    };
   }
 
   async findEnrolledCourse(userId: number, input: GetCoursesDto) {

@@ -9,7 +9,7 @@ import { FilesService } from '../files/files.service';
 
 import { CreateUserDto } from './dto/create-user.dto';
 import { DeleteManyUsersDto } from './dto/delete-many-user.dto';
-import { AdminGetUsersDto } from './dto/get-user.dto';
+import { AdminGetUsersDto, SearchUsersDto } from './dto/get-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
@@ -20,6 +20,54 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly filesService: FilesService,
   ) {}
+
+  public async search(input: SearchUsersDto) {
+    const where: Prisma.UserWhereInput = {
+      OR: [
+        {
+          firstName: {
+            contains: input.search,
+            mode: 'insensitive',
+          },
+        },
+        {
+          lastName: {
+            contains: input.search,
+            mode: 'insensitive',
+          },
+        },
+        {
+          userLogin: {
+            OR: [
+              {
+                email: {
+                  contains: input.search,
+                  mode: 'insensitive',
+                },
+              },
+              {
+                username: {
+                  contains: input.search,
+                  mode: 'insensitive',
+                },
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const total = await this.prisma.user.count({ where });
+
+    const items = await this.prisma.user.findMany({
+      where,
+      include: {
+        userLogin: true,
+      },
+    });
+
+    return new PaginatedData(total, items);
+  }
 
   public async adminGetPaginated(input: AdminGetUsersDto) {
     const where: Prisma.UserWhereInput = {

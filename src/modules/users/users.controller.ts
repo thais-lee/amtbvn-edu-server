@@ -27,7 +27,7 @@ import { TransformResponseInterceptor } from '@src/interceptors/transform-respon
 
 import { CreateUserDto } from './dto/create-user.dto';
 import { DeleteManyUsersDto } from './dto/delete-many-user.dto';
-import { AdminGetUsersDto } from './dto/get-user.dto';
+import { AdminGetUsersDto, SearchUsersDto } from './dto/get-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserBasicDto, UserDetailDto } from './dto/user.dto';
 import { UsersService } from './users.service';
@@ -44,6 +44,12 @@ export class UsersController {
   @ApiResponse(UserBasicDto)
   async updateMe(@CurrentUser() user: User, @Body() input: UpdateUserDto) {
     return this.usersService.updateMe(user, input);
+  }
+
+  @Get('/search')
+  @ApiPaginatedResponse(UserBasicDto)
+  async search(@Query() query: SearchUsersDto) {
+    return this.usersService.search(query);
   }
 
   @Get('admin-paginated')

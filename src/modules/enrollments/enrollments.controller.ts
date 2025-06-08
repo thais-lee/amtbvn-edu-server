@@ -11,9 +11,13 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+import { ERole, EnrollmentStatus, User } from '@prisma/client';
+
 import { ApiArrayResponse, ApiResponse } from '@shared/response';
 
+import { CurrentUser } from '@src/decorators/current-user.decorator';
 import { JwtAuth } from '@src/decorators/jwt-auth.decorator';
+import { RolesAuth } from '@src/decorators/roles-auth.decorator';
 import { TransformResponseInterceptor } from '@src/interceptors/transform-response.interceptor';
 
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
@@ -21,9 +25,6 @@ import { EnrollmentDto } from './dto/enrollment.dto';
 import { GetEnrollmentDto } from './dto/get-enrollment.dto';
 import { UpdateEnrollmentDto } from './dto/update-enrollment.dto';
 import { EnrollmentsService } from './enrollments.service';
-import { RolesAuth } from '@src/decorators/roles-auth.decorator';
-import { ERole, User } from '@prisma/client';
-import { CurrentUser } from '@src/decorators/current-user.decorator';
 
 @Controller('enrollments')
 @ApiTags('Enrollments')
@@ -42,8 +43,12 @@ export class EnrollmentsController {
 
   @Post('student')
   @ApiResponse(EnrollmentDto)
-  studentEnroll(@Body() createEnrollmentDto: CreateEnrollmentDto, @CurrentUser() user: User) {
-    createEnrollmentDto.userId = user.id
+  studentEnroll(
+    @Body() createEnrollmentDto: CreateEnrollmentDto,
+    @CurrentUser() user: User,
+  ) {
+    createEnrollmentDto.userId = user.id;
+    delete createEnrollmentDto.status;
     return this.enrollmentsService.create(createEnrollmentDto);
   }
 
@@ -56,14 +61,18 @@ export class EnrollmentsController {
   @Patch('update')
   @ApiResponse(EnrollmentDto)
   update(
-    @Param() params: GetEnrollmentDto,
+    @Query() params: GetEnrollmentDto,
     @Body() updateEnrollmentDto: UpdateEnrollmentDto,
   ) {
-    return this.enrollmentsService.update(params.userId, params.courseId, updateEnrollmentDto);
+    return this.enrollmentsService.update(
+      params.userId,
+      params.courseId,
+      updateEnrollmentDto,
+    );
   }
 
   @Delete('delete')
-  remove(@Param() params: GetEnrollmentDto) {
+  remove(@Query() params: GetEnrollmentDto) {
     return this.enrollmentsService.remove(params.userId, params.courseId);
   }
 }
