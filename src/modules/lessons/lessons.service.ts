@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
+import { LessonAttachmentType } from '@prisma/client';
 
 import { PrismaService } from '@src/prisma/prisma.service';
 
@@ -9,18 +15,39 @@ import { UpdateLessonDto } from './dto/update-lesson.dto';
 @Injectable()
 export class LessonsService {
   constructor(private readonly prisma: PrismaService) {}
+
   async create(input: CreateLessonDto) {
     const course = await this.prisma.course.findUnique({
-      where: {
-        id: input.courseId,
-      },
+      where: { id: input.courseId },
     });
-    if (!course) {
-      throw new Error('Course not found');
+    if (!course) throw new Error('Course not found');
+
+    const { mediaFileIds = [], documentFileIds = [], ...lessonData } = input;
+    const lesson = await this.prisma.lesson.create({ data: lessonData });
+
+    // Attach media files (type: VIDEO or AUDIO)
+    for (const fileId of mediaFileIds) {
+      const file = await this.prisma.file.findUnique({ where: { id: fileId } });
+      if (!file) continue;
+      let type: LessonAttachmentType = LessonAttachmentType.VIDEO;
+      if (file.mimeType.startsWith('audio/')) type = LessonAttachmentType.AUDIO;
+      else if (file.mimeType.startsWith('video/'))
+        type = LessonAttachmentType.VIDEO;
+      await this.prisma.lessonAttachment.create({
+        data: { lessonId: lesson.id, fileId, type },
+      });
     }
-    return this.prisma.lesson.create({
-      data: input,
-    });
+    // Attach document files (type: DOCUMENT)
+    for (const fileId of documentFileIds) {
+      await this.prisma.lessonAttachment.create({
+        data: {
+          lessonId: lesson.id,
+          fileId,
+          type: LessonAttachmentType.DOCUMENT,
+        },
+      });
+    }
+    return lesson;
   }
 
   async findAll(input: GetLessonDto) {
@@ -42,9 +69,7 @@ export class LessonsService {
 
   async findOne(id: number) {
     return this.prisma.lesson.findUnique({
-      where: {
-        id,
-      },
+      where: { id },
       select: {
         id: true,
         title: true,
@@ -55,19 +80,28 @@ export class LessonsService {
         createdAt: true,
         updatedAt: true,
         isImportant: true,
-
         previous: {
-          select: {
-            id: true,
-            title: true,
-            isImportant: true,
-          },
+          select: { id: true, title: true, isImportant: true },
         },
         next: {
+          select: { id: true, title: true, isImportant: true },
+        },
+        attachments: {
           select: {
-            id: true,
-            title: true,
-            isImportant: true,
+            fileId: true,
+            type: true,
+            file: {
+              select: {
+                id: true,
+                fileName: true,
+                mimeType: true,
+                size: true,
+                storagePath: true,
+                uploadedBy: true,
+                createdAt: true,
+                updatedAt: true,
+              },
+            },
           },
         },
       },
@@ -75,20 +109,57 @@ export class LessonsService {
   }
 
   async update(id: number, data: UpdateLessonDto) {
-    return this.prisma.lesson.update({
-      where: {
-        id,
+    const { mediaFileIds, documentFileIds, ...lessonData } = data;
+
+    // Update the lesson data
+    const lesson = await this.prisma.lesson.update({
+      where: { id },
+      data: {
+        ...lessonData,
       },
-      data,
     });
+
+    // Only update attachments if mediaFileIds or documentFileIds are provided
+    if (mediaFileIds !== undefined || documentFileIds !== undefined) {
+      // Remove old attachments
+      await this.prisma.lessonAttachment.deleteMany({ where: { lessonId: id } });
+
+      // Add new media attachments
+      if (mediaFileIds) {
+        for (const fileId of mediaFileIds) {
+          const file = await this.prisma.file.findUnique({ where: { id: fileId } });
+          if (!file) continue;
+          let type: LessonAttachmentType = LessonAttachmentType.VIDEO;
+          if (file.mimeType.startsWith('audio/')) type = LessonAttachmentType.AUDIO;
+          else if (file.mimeType.startsWith('video/'))
+            type = LessonAttachmentType.VIDEO;
+          await this.prisma.lessonAttachment.create({
+            data: { lessonId: lesson.id, fileId, type },
+          });
+        }
+      }
+
+      // Add new document attachments
+      if (documentFileIds) {
+        for (const fileId of documentFileIds) {
+          await this.prisma.lessonAttachment.create({
+            data: {
+              lessonId: lesson.id,
+              fileId,
+              type: LessonAttachmentType.DOCUMENT,
+            },
+          });
+        }
+      }
+    }
+
+    return lesson;
   }
 
   async remove(id: number) {
     try {
       return await this.prisma.lesson.delete({
-        where: {
-          id,
-        },
+        where: { id },
       });
     } catch (error) {
       throw new NotFoundException('Lesson not found');

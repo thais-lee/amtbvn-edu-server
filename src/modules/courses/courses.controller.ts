@@ -62,6 +62,18 @@ export class CoursesController {
     return this.coursesService.findEnrolledCourse(user.id, query);
   }
 
+  @Get('/not-enrolled')
+  @ApiArrayResponse(CourseDto)
+  findAllNotEnrolled(@Query() query: GetCoursesDto, @CurrentUser() user) {
+    return this.coursesService.findNotEnrolledCourse(user.id, query);
+  }
+
+  @Get('/pending')
+  @ApiArrayResponse(CourseDto)
+  findAllPending(@Query() query: GetCoursesDto, @CurrentUser() user) {
+    return this.coursesService.findPendingCourse(user.id, query);
+  }
+
   @Get('/member')
   @ApiArrayResponse(CourseDto)
   getCourseMember(@Query() query: GetCourseMemberDto) {

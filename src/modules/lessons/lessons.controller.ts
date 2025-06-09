@@ -19,6 +19,7 @@ export class LessonsController {
 
   @Post()
   create(@Body() createLessonDto: CreateLessonDto) {
+    // createLessonDto may include mediaFileIds and documentFileIds
     return this.lessonsService.create(createLessonDto);
   }
 
@@ -37,6 +38,7 @@ export class LessonsController {
   @Patch(':id')
   @ApiResponse(LessonDto)
   update(@Param('id') id: number, @Body() updateLessonDto: UpdateLessonDto) {
+    // updateLessonDto may include mediaFileIds and documentFileIds
     return this.lessonsService.update(+id, updateLessonDto);
   }
 

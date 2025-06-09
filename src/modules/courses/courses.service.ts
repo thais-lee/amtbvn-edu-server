@@ -84,6 +84,103 @@ export class CoursesService {
     });
   }
 
+  async findNotEnrolledCourse(userId: number, input: GetCoursesDto) {
+    const courses = await this.prisma.course.findMany({
+      where: {
+        enrollments: {
+          none: {
+            userId,
+          },
+        },
+        categoryId: input.categoryId ? input.categoryId : undefined,
+        status: input.status ? input.status : undefined,
+        requireApproval: input.requireApproval
+          ? input.requireApproval
+          : undefined,
+      },
+      include: {
+        category: {
+          select: {
+            name: true,
+          },
+        },
+        _count: {
+          select: {
+            lessons: true,
+            enrollments: {
+              where: {
+                status: EnrollmentStatus.ACCEPTED,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: input.order ? input.order : 'desc',
+      },
+      // skip: input.skip,
+      // take: input.take,
+    });
+
+    return {
+      items: courses,
+      total: courses.length,
+    };
+  }
+
+  async findPendingCourse(userId: number, input: GetCoursesDto) {
+    const courses = await this.prisma.course.findMany({
+      where: {
+        enrollments: {
+          some: {
+            userId,
+            status: {
+              in: [EnrollmentStatus.PENDING, EnrollmentStatus.REJECTED],
+            },
+          },
+        },
+        categoryId: input.categoryId ? input.categoryId : undefined,
+        status: input.status ? input.status : undefined,
+      },
+      include: {
+        category: {
+          select: {
+            name: true,
+          },
+        },
+        enrollments: {
+          where: {
+            userId,
+            status: {
+              in: [EnrollmentStatus.PENDING, EnrollmentStatus.REJECTED],
+            },
+          },
+          select: {
+            status: true,
+          },
+        },
+        _count: {
+          select: {
+            lessons: true,
+            enrollments: {
+              where: {
+                status: EnrollmentStatus.ACCEPTED,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: input.order ? input.order : 'desc',
+      },
+    });
+
+    return {
+      items: courses,
+      total: courses.length,
+    };
+  }
+
   async findOneBySlug(slug: string) {
     return this.prisma.course.findUnique({
       where: {
@@ -136,7 +233,7 @@ export class CoursesService {
   }
 
   async findEnrolledCourse(userId: number, input: GetCoursesDto) {
-    return this.prisma.studentCourseEnrollment.findMany({
+    const enrollments = await this.prisma.studentCourseEnrollment.findMany({
       where: {
         userId,
         course: {
@@ -173,6 +270,11 @@ export class CoursesService {
         },
       },
     });
+
+    return {
+      items: enrollments,
+      total: enrollments.length,
+    };
   }
 
   async update(id: number, updateCourseDto: UpdateCourseDto) {

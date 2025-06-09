@@ -194,7 +194,7 @@ export class FilesService {
       }
 
       const storagePath = `${folder}/${hashedFileName}`;
-      const fileUrl = `${endpointWithProtocol}:${this.port}/${this.bucketName}/${storagePath}${extension}`;
+      const fileUrl = `${endpointWithProtocol}:${this.port}/${this.bucketName}/${storagePath}`;
       const metaData = {
         'Content-Type': file.mimetype,
       };
@@ -296,5 +296,40 @@ export class FilesService {
 
   remove(filePath: string) {
     return this.minioService.removeObject(this.bucketName, filePath);
+  }
+
+  async deleteFile(id: number) {
+    const file = await this.prisma.file.findUnique({
+      where: { id },
+    });
+
+    if (!file) {
+      throw new NotFoundException('File not found');
+    }
+
+    // Extract the storage path relative to the bucket
+    // Example: http://localhost:9000/main/files/abc.jpg -> files/abc.jpg
+    let storagePath = file.storagePath;
+    // Remove protocol and host
+    const bucketIndex = storagePath.indexOf(this.bucketName + '/');
+    if (bucketIndex !== -1) {
+      storagePath = storagePath.substring(bucketIndex + this.bucketName.length + 1);
+    }
+
+    // Delete from MinIO
+    try {
+      await this.minioService.removeObject(
+        this.bucketName,
+        storagePath,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to delete file from MinIO: ${error.stack}`);
+      throw new BadRequestException('MinIO: Failed to delete file');
+    }
+
+    // Delete from database
+    await this.prisma.file.delete({
+      where: { id },
+    });
   }
 }

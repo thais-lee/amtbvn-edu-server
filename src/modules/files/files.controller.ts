@@ -137,4 +137,13 @@ export class FilesController {
     const url = await this.filesService.getPresignedUrlById(id);
     return { url };
   }
+
+  @Delete(':id')
+  @ApiResponse(Boolean)
+  async deleteFile(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{ success: boolean }> {
+    await this.filesService.deleteFile(id);
+    return { success: true };
+  }
 }

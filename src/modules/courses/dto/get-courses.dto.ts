@@ -16,6 +16,7 @@ export class GetCoursesDto extends SearchSortInput {
 
   @IsOptional()
   @IsBoolean()
+  @Transform((param) => Boolean(param.value))
   requireApproval?: boolean;
 }
 
