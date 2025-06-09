@@ -301,4 +301,135 @@ export class CoursesService {
       throw new NotFoundException('Course not found');
     }
   }
+
+  async getCourseUserProgress(courseId: number, userId: number) {
+    // Get course and lessons with activities and completions
+    const course = await this.prisma.course.findUnique({
+      where: { id: courseId },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        imageFileUrl: true,
+        bannerFileUrl: true,
+        status: true,
+        category: {
+          select: {
+            name: true,
+          },
+        },
+        createdAt: true,
+        updatedAt: true,
+        activities: true,
+        lessons: {
+          select: {
+            id: true,
+            title: true,
+            content: true,
+            attachments: {
+              select: {
+                fileId: true,
+                type: true,
+                file: {
+                  select: {
+                    id: true,
+                    fileName: true,
+                    mimeType: true,
+                    size: true,
+                    storagePath: true,
+                  },
+                },
+              },
+            },
+            completions: {
+              where: { userId },
+              select: { isCompleted: true, completedAt: true },
+            },
+            activities: {
+              select: {
+                id: true,
+                title: true,
+                type: true,
+                status: true,
+                dueDate: true,
+                maxAttempts: true,
+                passScore: true,
+                timeLimitMinutes: true,
+                createdAt: true,
+                updatedAt: true,
+                attempts: {
+                  where: { studentId: userId },
+                  select: {
+                    id: true,
+                    startedAt: true,
+                    completedAt: true,
+                    score: true,
+                    gradingStatus: true,
+                  },
+                  orderBy: { startedAt: 'desc' },
+                  take: 1, // Only latest attempt
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!course) throw new NotFoundException('Course not found');
+
+    // Calculate progress
+    const totalLessons = course.lessons.length;
+    const completedLessons = course.lessons.filter(
+      (l) => l.completions.length > 0 && l.completions[0].isCompleted,
+    ).length;
+    const progress =
+      totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
+
+    // Format lessons with content and activity progress
+    const lessons = course.lessons.map((l) => ({
+      id: l.id,
+      title: l.title,
+      content: l.content,
+      attachments: l.attachments,
+      isCompleted: l.completions.length > 0 && l.completions[0].isCompleted,
+      completedAt: l.completions[0]?.completedAt,
+      activities: l.activities.map((a) => ({
+        id: a.id,
+        title: a.title,
+        type: a.type,
+        status: a.status,
+        dueDate: a.dueDate,
+        maxAttempts: a.maxAttempts,
+        passScore: a.passScore,
+        timeLimitMinutes: a.timeLimitMinutes,
+        createdAt: a.createdAt,
+        updatedAt: a.updatedAt,
+        latestAttempt: a.attempts[0]
+          ? {
+              id: a.attempts[0].id,
+              startedAt: a.attempts[0].startedAt,
+              completedAt: a.attempts[0].completedAt,
+              score: a.attempts[0].score,
+              gradingStatus: a.attempts[0].gradingStatus,
+            }
+          : null,
+      })),
+    }));
+
+    return {
+      id: course.id,
+      name: course.name,
+      description: course.description,
+      status: course.status,
+      category: course.category,
+      createdAt: course.createdAt,
+      updatedAt: course.updatedAt,
+      imageFileUrl: course.imageFileUrl,
+      bannerFileUrl: course.bannerFileUrl,
+      activities: course.activities,
+      progress,
+      lessons,
+    };
+  }
 }

@@ -6,6 +6,7 @@ import {
 
 import { LessonAttachmentType } from '@prisma/client';
 
+import { FilesService } from '@src/modules/files/files.service';
 import { PrismaService } from '@src/prisma/prisma.service';
 
 import { CreateLessonDto } from './dto/create-lesson.dto';
@@ -14,7 +15,10 @@ import { UpdateLessonDto } from './dto/update-lesson.dto';
 
 @Injectable()
 export class LessonsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly filesService: FilesService,
+  ) {}
 
   async create(input: CreateLessonDto) {
     const course = await this.prisma.course.findUnique({
@@ -68,7 +72,7 @@ export class LessonsService {
   }
 
   async findOne(id: number) {
-    return this.prisma.lesson.findUnique({
+    const lesson = await this.prisma.lesson.findUnique({
       where: { id },
       select: {
         id: true,
@@ -106,11 +110,36 @@ export class LessonsService {
         },
       },
     });
+    if (!lesson) return null;
+
+    // Find the first video attachment
+    const videoAtt = lesson.attachments.find(
+      (att) => att.type === 'VIDEO' && att.file?.mimeType?.startsWith('video/'),
+    );
+    let videoAttachment = null;
+    if (videoAtt) {
+      const presigned = await this.filesService.getPresignedUrlById(
+        videoAtt.fileId,
+      );
+      videoAttachment = {
+        ...videoAtt,
+        file: {
+          ...videoAtt.file,
+          presignedUrl: presigned,
+        },
+      };
+    }
+
+    return {
+      ...lesson,
+      videoAttachment,
+    };
   }
 
   async update(id: number, data: UpdateLessonDto) {
     const { mediaFileIds, documentFileIds, ...lessonData } = data;
 
+    delete lessonData.previousId;
     // Update the lesson data
     const lesson = await this.prisma.lesson.update({
       where: { id },
@@ -122,15 +151,20 @@ export class LessonsService {
     // Only update attachments if mediaFileIds or documentFileIds are provided
     if (mediaFileIds !== undefined || documentFileIds !== undefined) {
       // Remove old attachments
-      await this.prisma.lessonAttachment.deleteMany({ where: { lessonId: id } });
+      await this.prisma.lessonAttachment.deleteMany({
+        where: { lessonId: id },
+      });
 
       // Add new media attachments
       if (mediaFileIds) {
         for (const fileId of mediaFileIds) {
-          const file = await this.prisma.file.findUnique({ where: { id: fileId } });
+          const file = await this.prisma.file.findUnique({
+            where: { id: fileId },
+          });
           if (!file) continue;
           let type: LessonAttachmentType = LessonAttachmentType.VIDEO;
-          if (file.mimeType.startsWith('audio/')) type = LessonAttachmentType.AUDIO;
+          if (file.mimeType.startsWith('audio/'))
+            type = LessonAttachmentType.AUDIO;
           else if (file.mimeType.startsWith('video/'))
             type = LessonAttachmentType.VIDEO;
           await this.prisma.lessonAttachment.create({

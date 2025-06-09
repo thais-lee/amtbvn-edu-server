@@ -97,4 +97,9 @@ export class CoursesController {
   remove(@Param('id') id: number) {
     return this.coursesService.remove(id);
   }
+
+  @Get(':id/user-progress')
+  getCourseUserProgress(@Param('id') id: number, @CurrentUser() user) {
+    return this.coursesService.getCourseUserProgress(Number(id), user.id);
+  }
 }
