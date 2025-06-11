@@ -1,8 +1,18 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
-import { ActivityType, ActivityStatus } from '@prisma/client';
-import { IsDate, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { ActivityStatus, ActivityType } from '@prisma/client';
+import { Transform, Type, plainToClass } from 'class-transformer';
+import {
+  IsArray,
+  IsDate,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+
+import { CreateActivityQuestionDto } from './create-activity-question.dto';
 
 export class UpdateActivityDto {
   @ApiPropertyOptional()
@@ -67,12 +77,40 @@ export class UpdateActivityDto {
   @ApiPropertyOptional({ type: [Number] })
   @IsOptional()
   @IsInt({ each: true })
-  @Transform(({ value }) => Array.isArray(value) ? value.map(Number) : [Number(value)])
+  @Transform(({ value }) =>
+    Array.isArray(value) ? value.map(Number) : [Number(value)],
+  )
   fileIdsToRemove?: number[];
 
   @ApiPropertyOptional({ type: [Number] })
   @IsOptional()
   @IsInt({ each: true })
-  @Transform(({ value }) => Array.isArray(value) ? value.map(Number) : [Number(value)])
+  @Transform(({ value }) =>
+    Array.isArray(value) ? value.map(Number) : [Number(value)],
+  )
   fileIdsToKeep?: number[];
+
+  @ApiPropertyOptional({ type: [CreateActivityQuestionDto] })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) {
+          return parsed.map((item) =>
+            plainToClass(CreateActivityQuestionDto, item),
+          );
+        }
+        return parsed;
+      } catch (e) {
+        console.error('Failed to parse "questions" JSON string:', e);
+        return value;
+      }
+    }
+    return value;
+  })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateActivityQuestionDto)
+  questions?: CreateActivityQuestionDto[];
 }

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 
+import { ActivityModule } from '@modules/activities/activity.module';
 import { FilesModule } from '@modules/files/files.module';
 
 import { PrismaModule } from '@src/prisma/prisma.module';
@@ -12,6 +13,6 @@ import { LessonsService } from './lessons.service';
   controllers: [LessonsController],
   providers: [LessonsService],
   exports: [LessonsService],
-  imports: [JwtModule, PrismaModule, FilesModule],
+  imports: [JwtModule, PrismaModule, FilesModule, ActivityModule],
 })
 export class LessonsModule {}

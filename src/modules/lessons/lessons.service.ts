@@ -4,13 +4,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { LessonAttachmentType } from '@prisma/client';
+import { ActivityStatus, LessonAttachmentType } from '@prisma/client';
 
 import { FilesService } from '@src/modules/files/files.service';
 import { PrismaService } from '@src/prisma/prisma.service';
 
 import { CreateLessonDto } from './dto/create-lesson.dto';
 import { GetLessonDto } from './dto/get-lesson.dto';
+import { LessonWithAttachments } from './dto/lesson.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
 
 @Injectable()
@@ -71,8 +72,62 @@ export class LessonsService {
     });
   }
 
+  async userFindAll(input: GetLessonDto, userId: number) {
+    const lessons = await this.prisma.lesson.findMany({
+      where: {
+        courseId: input.courseId ? input.courseId : undefined,
+        previousId: input.previousId ? +input.previousId : undefined,
+        status: input.status ? input.status : undefined,
+        title: {
+          contains: input.search,
+          mode: 'insensitive',
+        },
+      },
+      orderBy: {
+        createdAt: input.order,
+      },
+      include: {
+        _count: {
+          select: {
+            activities: true,
+            attachments: true,
+          },
+        },
+        // If you track completion per user, e.g., lessonCompletions table:
+        completions: userId
+          ? {
+              where: { userId },
+              select: { isCompleted: true },
+            }
+          : false,
+      },
+    });
+
+    // Map to desired shape
+    const data = lessons.map((lesson) => ({
+      id: lesson.id,
+      title: lesson.title,
+      status: lesson.status,
+      isImportant: lesson.isImportant,
+      activitiesCount: lesson._count.activities,
+      attachmentsCount: lesson._count.attachments,
+      previousId: lesson.previousId,
+      createdAt: lesson.createdAt,
+      updatedAt: lesson.updatedAt,
+      isCompleted:
+        lesson.completions && lesson.completions.length > 0
+          ? lesson.completions[0].isCompleted
+          : false,
+    }));
+
+    return {
+      data,
+      total: data.length,
+    };
+  }
+
   async findOne(id: number) {
-    const lesson = await this.prisma.lesson.findUnique({
+    const lesson = (await this.prisma.lesson.findUnique({
       where: { id },
       select: {
         id: true,
@@ -108,8 +163,37 @@ export class LessonsService {
             },
           },
         },
+        activities: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            type: true,
+            status: true,
+            timeLimitMinutes: true,
+            dueDate: true,
+            maxAttempts: true,
+            passScore: true,
+            shuffleQuestions: true,
+            createdAt: true,
+            updatedAt: true,
+            materials: {
+              select: {
+                File: {
+                  select: {
+                    id: true,
+                    fileName: true,
+                    mimeType: true,
+                    size: true,
+                    storagePath: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
-    });
+    })) as LessonWithAttachments | null;
     if (!lesson) return null;
 
     // Find the first video attachment
@@ -130,9 +214,28 @@ export class LessonsService {
       };
     }
 
+    // Get presigned URLs for activity materials
+    const activitiesWithPresignedUrls = await Promise.all(
+      lesson.activities.map(async (activity) => ({
+        ...activity,
+        materials: await Promise.all(
+          activity.materials.map(async (material) => ({
+            ...material,
+            File: {
+              ...material.File,
+              presignedUrl: await this.filesService.getPresignedUrlById(
+                material.File.id,
+              ),
+            },
+          })),
+        ),
+      })),
+    );
+
     return {
       ...lesson,
       videoAttachment,
+      activities: activitiesWithPresignedUrls,
     };
   }
 

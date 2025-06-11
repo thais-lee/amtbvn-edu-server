@@ -90,17 +90,21 @@ export class ActivityService {
             : createActivityDto.lessonId,
           status: ActivityStatus.DRAFT,
           questions: {
-            create: createActivityDto.questions.map((question) => ({
-              question: question.question,
-              type: question.type,
-              points: question.points,
-              options: {
-                create: question.options.map((option) => ({
-                  text: option.text,
-                  isCorrect: option.isCorrect,
-                })),
-              },
-            })),
+            create: Array.isArray(createActivityDto.questions)
+              ? createActivityDto.questions.map((question) => ({
+                  question: question.question,
+                  type: question.type,
+                  points: question.points,
+                  options: {
+                    create: Array.isArray(question.options)
+                      ? question.options.map((option) => ({
+                          text: option.text,
+                          isCorrect: option.isCorrect,
+                        }))
+                      : [],
+                  },
+                }))
+              : [],
           },
         },
       });
@@ -191,7 +195,7 @@ export class ActivityService {
   }
 
   async findAll(input: GetActivityDto) {
-    return this.prisma.activity.findMany({
+    const activities = await this.prisma.activity.findMany({
       where: {
         courseId: input.courseId ? input.courseId : undefined,
         lessonId: input.lessonId ? input.lessonId : undefined,
@@ -220,6 +224,26 @@ export class ActivityService {
       take: input.take,
       skip: input.skip,
     });
+
+    const total = await this.prisma.activity.count({
+      where: {
+        courseId: input.courseId ? input.courseId : undefined,
+        lessonId: input.lessonId ? input.lessonId : undefined,
+        type: input.type ? input.type : undefined,
+      },
+    });
+    return {
+      items: activities,
+      total,
+    };
+  }
+
+  async userFindAll(input: GetActivityDto, userId: number) {
+    return this.prisma.activity.findMany({
+      where: {
+        courseId: input.courseId ? input.courseId : undefined,
+      },
+    });
   }
 
   async findOne(id: number) {
@@ -231,6 +255,11 @@ export class ActivityService {
         materials: {
           include: {
             File: true,
+          },
+        },
+        questions: {
+          include: {
+            options: true,
           },
         },
       },
@@ -332,13 +361,22 @@ export class ActivityService {
           }
         }
 
-        // Update activity
+        // 1. Update the activity itself (including materials logic)
         const updatedActivity = await prisma.activity.update({
           where: { id },
           data: {
-            ...input,
+            title: input.title,
+            description: input.description,
+            type: input.type,
+            status: input.status,
+            timeLimitMinutes: input.timeLimitMinutes,
+            courseId: input.courseId,
+            lessonId: input.lessonId,
+            dueDate: input.dueDate,
+            maxAttempts: input.maxAttempts,
+            passScore: input.passScore,
             materials:
-              createdFilesData.length > 0
+              createdFilesData && createdFilesData.length > 0
                 ? {
                     createMany: {
                       data: createdFilesData.map((fileData) => ({
@@ -361,6 +399,103 @@ export class ActivityService {
             },
           },
         });
+
+        // 2. Handle questions
+        if (input.questions) {
+          const questions = input.questions as any[]; // TUpdateQuestionDto[]
+          // Get existing question IDs for this activity
+          const existingQuestions = await this.prisma.activityQuestion.findMany(
+            {
+              where: { activityId: id },
+              select: { id: true },
+            },
+          );
+          const existingQuestionIds = existingQuestions.map((q) => q.id);
+          const payloadQuestionIds = questions
+            .filter((q) => q.id)
+            .map((q) => q.id);
+
+          // Delete questions that are not in the payload
+          await this.prisma.activityQuestion.deleteMany({
+            where: {
+              activityId: id,
+              id: { notIn: payloadQuestionIds },
+            },
+          });
+
+          for (const q of questions) {
+            if (q.id) {
+              // Update existing question
+              await this.prisma.activityQuestion.update({
+                where: { id: q.id },
+                data: {
+                  question: q.question,
+                  type: q.type,
+                  points: q.points,
+                },
+              });
+
+              // Handle options
+              const options = (q.options ?? []) as any[]; // TUpdateQuestionOptionDto[]
+              const existingOptions = await this.prisma.questionOption.findMany(
+                {
+                  where: { questionId: q.id },
+                  select: { id: true },
+                },
+              );
+              const existingOptionIds = existingOptions.map((o) => o.id);
+              const payloadOptionIds = options
+                .filter((o) => o.id)
+                .map((o) => o.id);
+
+              // Delete removed options
+              await this.prisma.questionOption.deleteMany({
+                where: {
+                  questionId: q.id,
+                  id: { notIn: payloadOptionIds },
+                },
+              });
+
+              for (const opt of options) {
+                if (opt.id) {
+                  // Update existing option
+                  await this.prisma.questionOption.update({
+                    where: { id: opt.id },
+                    data: {
+                      text: opt.text,
+                      isCorrect: opt.isCorrect,
+                    },
+                  });
+                } else {
+                  // Create new option
+                  await this.prisma.questionOption.create({
+                    data: {
+                      questionId: q.id,
+                      text: opt.text,
+                      isCorrect: opt.isCorrect,
+                    },
+                  });
+                }
+              }
+            } else {
+              // Create new question (with options)
+              await this.prisma.activityQuestion.create({
+                data: {
+                  activityId: id,
+                  question: q.question,
+                  type: q.type,
+                  points: q.points,
+                  options: {
+                    create: (q.options ?? []).map((opt) => ({
+                      text: opt.text,
+                      isCorrect: opt.isCorrect,
+                    })),
+                  },
+                },
+              });
+            }
+          }
+        }
 
         return updatedActivity;
       } catch (error) {

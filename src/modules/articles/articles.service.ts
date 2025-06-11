@@ -1,10 +1,6 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
-import { ArticleStatus, ArticlesType, ERole, Prisma } from '@prisma/client';
+import { ArticleStatus, ERole, Prisma } from '@prisma/client';
 
 import { FilesService } from '@modules/files/files.service';
 

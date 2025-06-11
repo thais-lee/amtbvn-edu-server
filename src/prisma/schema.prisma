@@ -299,12 +299,12 @@ model CourseLibraryUsage {
 
 model LessonAttachment {
   lessonId  Int
-  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lesson    Lesson               @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   fileId    Int
-  file      File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  file      File                 @relation(fields: [fileId], references: [id], onDelete: Cascade)
   type      LessonAttachmentType
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
 
   @@id([lessonId, fileId])
   @@index([fileId])
@@ -431,23 +431,23 @@ model QuestionOption {
 }
 
 model ActivityAttempt {
-  id            Int      @id @default(autoincrement())
-  activityId    Int
-  Activity      Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  studentId     Int
-  student       User     @relation("UserAttempts", fields: [studentId], references: [id], onDelete: Cascade)
-  attemptNumber Int      @default(1)
-
-  startedAt      DateTime      @default(now())
+  id             Int       @id @default(autoincrement())
+  activityId     Int
+  studentId      Int
+  attemptNumber  Int       @default(1)
+  startedAt      DateTime  @default(now())
   completedAt    DateTime?
   score          Float?
-  gradingStatus  GradingStatus @default(IN_PROGRESS)
   graderId       Int?
-  grader         User?         @relation("GradedAttempts", fields: [graderId], references: [id], onDelete: SetNull)
   gradedAt       DateTime?
   graderFeedback String?
+  gradingStatus GradingStatus   @default(IN_PROGRESS)
 
-  answers StudentAnswer[]
+
+  answers       StudentAnswer[]
+  activity      Activity        @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  student       User            @relation("UserAttempts", fields: [studentId], references: [id], onDelete: Cascade)
+  grader        User?           @relation("GradedAttempts", fields: [graderId], references: [id], onDelete: SetNull)
 
   @@unique([activityId, studentId, attemptNumber])
   @@index([activityId])
@@ -457,20 +457,21 @@ model ActivityAttempt {
 }
 
 model StudentAnswer {
-  id                 Int              @id @default(autoincrement())
+  id                 Int     @id @default(autoincrement())
   activityAttemptId  Int
-  ActivityAttempt    ActivityAttempt  @relation(fields: [activityAttemptId], references: [id], onDelete: Cascade)
   activityQuestionId Int
-  Question           ActivityQuestion @relation(fields: [activityQuestionId], references: [id], onDelete: Cascade)
   selectedOptionId   Int?
-  SelectedOption     QuestionOption?  @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
   essayAnswer        String?
-  fileId             Int?             @unique()
-  file               File?            @relation(fields: [fileId], references: [id], "StudentAnswerFile")
+  fileId             Int?    @unique()
 
   isCorrect Boolean?
   score     Float?
   feedback  String?
+
+  selectedOption   QuestionOption?  @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+  activityQuestion ActivityQuestion @relation(fields: [activityQuestionId], references: [id], onDelete: Cascade)
+  activityAttempt  ActivityAttempt  @relation(fields: [activityAttemptId], references: [id], onDelete: Cascade)
+  file             File?            @relation(fields: [fileId], references: [id], "StudentAnswerFile")
 
   @@unique([activityAttemptId, activityQuestionId])
   @@index([activityAttemptId])

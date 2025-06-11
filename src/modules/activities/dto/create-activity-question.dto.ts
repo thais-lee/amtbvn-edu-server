@@ -1,11 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import { QuestionType } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { Transform, Type, plainToClass } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -25,7 +26,7 @@ export class QuestionOptionDto {
     description: 'Whether this option is correct',
   })
   @IsBoolean()
-  @Type(() => Boolean)
+  @Transform(({ value }) => (value === 'true' || value === true ? true : false))
   isCorrect: boolean;
 }
 
@@ -44,20 +45,26 @@ export class CreateActivityQuestionDto {
   @IsEnum(QuestionType)
   type: QuestionType;
 
+  @ApiProperty({})
+  @IsInt()
+  @Transform(({ value }) => Number(value))
+  points: number;
+
   @ApiPropertyOptional({
     description: 'List of options for multiple choice questions',
     type: [QuestionOptionDto],
   })
-  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => QuestionOptionDto)
-  options?: QuestionOptionDto[];
-
-  @ApiProperty({})
-  @IsNumber()
-  @Type(() => Number)
-  points: number;
+  @Transform(({ value }) => {
+    if (Array.isArray(value)) {
+      return value.map((item) => plainToClass(QuestionOptionDto, item));
+    }
+    return [];
+  })
+  @IsOptional()
+  options: QuestionOptionDto[];
 
   @ApiPropertyOptional({})
   @IsOptional()

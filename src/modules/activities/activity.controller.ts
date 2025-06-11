@@ -11,19 +11,34 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
-import { JwtAuth } from '@src/decorators/jwt-auth.decorator';
-import { TransformResponseInterceptor } from '@src/interceptors/transform-response.interceptor';
 import { ERole } from '@prisma/client';
 
-import { RolesAuth } from '@src/decorators/roles-auth.decorator';
+import { UserBasicDto } from '@modules/users/dto/user.dto';
 
+import { CurrentUser } from '@src/decorators/current-user.decorator';
+import { JwtAuth } from '@src/decorators/jwt-auth.decorator';
+import { RolesAuth } from '@src/decorators/roles-auth.decorator';
+import { TransformResponseInterceptor } from '@src/interceptors/transform-response.interceptor';
+
+import { ActivityService } from './activity.service';
+import {
+  GetActivityAttemptsDto,
+  StartActivityAttemptDto,
+  SubmitActivityAttemptDto,
+} from './dto/activity-attempt.dto';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { GetActivityDto } from './dto/get-lesson-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
-import { ActivityService } from './activity.service';
-import { GetActivityAttemptsDto, StartActivityAttemptDto, SubmitActivityAttemptDto } from './dto/activity-attempt.dto';
 
 @Controller('activities')
 @ApiTags('Activities')
@@ -53,13 +68,46 @@ export class ActivityController {
   @ApiOperation({ summary: 'Get all activities' })
   @ApiQuery({ name: 'courseId', required: false, type: Number })
   @ApiQuery({ name: 'lessonId', required: false, type: Number })
-  @ApiQuery({ name: 'status', required: false, enum: ['DRAFT', 'PUBLISHED', 'ARCHIVED'] })
-  @ApiQuery({ name: 'type', required: false, enum: ['QUIZ', 'ASSIGNMENT', 'DISCUSSION', 'PROJECT'] })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['DRAFT', 'PUBLISHED', 'ARCHIVED'],
+  })
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    enum: ['QUIZ', 'ASSIGNMENT', 'DISCUSSION', 'PROJECT'],
+  })
   @ApiQuery({ name: 'creatorId', required: false, type: Number })
-  @ApiResponse({ status: 200, description: 'Activities retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Activities retrieved successfully',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async findAll(@Query() query: GetActivityDto) {
     return this.activityService.findAll(query);
+  }
+
+  @Get('user')
+  @ApiOperation({ summary: 'Get all activities' })
+  @ApiQuery({ name: 'courseId', required: false, type: Number })
+  @ApiQuery({ name: 'lessonId', required: false, type: Number })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['DRAFT', 'PUBLISHED', 'ARCHIVED'],
+  })
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    enum: ['QUIZ', 'ASSIGNMENT', 'DISCUSSION', 'PROJECT'],
+  })
+  @ApiQuery({ name: 'creatorId', required: false, type: Number })
+  async userFindAll(
+    @Query() query: GetActivityDto,
+    @CurrentUser() user: UserBasicDto,
+  ) {
+    return this.activityService.userFindAll(query, user.id);
   }
 
   @Get(':id')
