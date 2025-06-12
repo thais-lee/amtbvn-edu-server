@@ -83,7 +83,7 @@ export class LessonWithAttachments {
     createdAt: Date;
     updatedAt: Date;
     materials: Array<{
-      File: {
+      file: {
         id: number;
         fileName: string;
         mimeType: string;

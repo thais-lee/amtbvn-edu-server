@@ -1,17 +1,33 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+import { Transform, Type } from 'class-transformer';
+import {
+  IsArray,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 
 export class AnswerDto {
   @ApiProperty()
   @IsNotEmpty()
   @IsNumber()
+  @Transform(({ value }) => Number(value))
   questionId: number;
 
-  @ApiProperty()
-  @IsNotEmpty()
+  @ApiPropertyOptional({ required: false })
+  @IsOptional()
   @IsString()
-  answer: string;
+  @Transform(({ value }) => JSON.stringify(value))
+  answer?: string;
+
+  @ApiPropertyOptional({ required: false })
+  @IsOptional()
+  @IsNumber()
+  @Transform(({ value }) => Number(value))
+  selectedOptionId?: number;
 }
 
 export class StartActivityAttemptDto {
@@ -26,6 +42,12 @@ export class SubmitActivityAttemptDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => AnswerDto)
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return JSON.parse(value);
+    }
+    return value;
+  })
   answers: AnswerDto[];
 }
 
@@ -39,4 +61,4 @@ export class GetActivityAttemptsDto {
   @IsOptional()
   @IsNumber()
   studentId?: number;
-} 
+}

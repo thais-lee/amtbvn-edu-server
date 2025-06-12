@@ -120,6 +120,15 @@ export class ActivityController {
     return this.activityService.findOne(+id);
   }
 
+  @Get('user/:id')
+  @ApiOperation({ summary: 'User get a single activity by ID' })
+  async userFindOne(
+    @Param('id') id: number,
+    @CurrentUser() user: UserBasicDto,
+  ) {
+    return this.activityService.userFindOne(+id, user.id);
+  }
+
   @Patch(':id')
   @RolesAuth([ERole.ADMIN, ERole.TEACHER])
   @ApiOperation({ summary: 'Update an activity' })
@@ -152,19 +161,22 @@ export class ActivityController {
   }
 
   @Post('attempts/start')
-  @RolesAuth([ERole.USER])
+  @RolesAuth([ERole.USER, ERole.ADMIN, ERole.TEACHER])
   @ApiOperation({ summary: 'Start a new activity attempt' })
   @ApiResponse({ status: 201, description: 'Attempt started successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiResponse({ status: 404, description: 'Activity not found' })
-  async startAttempt(@Body() input: StartActivityAttemptDto) {
-    return this.activityService.startAttempt(input, 1); // TODO: Replace with actual student ID from auth
+  async startAttempt(
+    @Body() input: StartActivityAttemptDto,
+    @CurrentUser() user: UserBasicDto,
+  ) {
+    return this.activityService.startAttempt(input, user.id);
   }
 
   @Post('attempts/:id/submit')
-  @RolesAuth([ERole.USER])
+  @RolesAuth([ERole.USER, ERole.ADMIN, ERole.TEACHER])
   @ApiOperation({ summary: 'Submit an activity attempt' })
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, description: 'Attempt submitted successfully' })
@@ -175,12 +187,13 @@ export class ActivityController {
   async submitAttempt(
     @Param('id') id: string,
     @Body() input: SubmitActivityAttemptDto,
+    @CurrentUser() user: UserBasicDto,
   ) {
-    return this.activityService.submitAttempt(+id, input, 1); // TODO: Replace with actual student ID from auth
+    return this.activityService.submitAttempt(+id, input, user.id);
   }
 
   @Get('attempts')
-  @RolesAuth([ERole.USER])
+  @RolesAuth([ERole.USER, ERole.ADMIN, ERole.TEACHER])
   @ApiOperation({ summary: 'Get activity attempts' })
   @ApiQuery({ name: 'activityId', required: false, type: Number })
   @ApiQuery({ name: 'studentId', required: false, type: Number })
@@ -192,7 +205,7 @@ export class ActivityController {
   }
 
   @Get('attempts/:id')
-  @RolesAuth([ERole.USER])
+  @RolesAuth([ERole.USER, ERole.ADMIN, ERole.TEACHER])
   @ApiOperation({ summary: 'Get a single activity attempt' })
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, description: 'Attempt retrieved successfully' })
@@ -201,5 +214,15 @@ export class ActivityController {
   @ApiResponse({ status: 404, description: 'Attempt not found' })
   async getAttempt(@Param('id') id: string) {
     return this.activityService.getAttempt(+id, 1); // TODO: Replace with actual student ID from auth
+  }
+
+  @Get('attempts/:id/result')
+  @RolesAuth([ERole.USER, ERole.ADMIN, ERole.TEACHER])
+  @ApiOperation({ summary: 'Get a single activity attempt result' })
+  async getAttemptResult(
+    @Param('id') id: number,
+    @CurrentUser() user: UserBasicDto,
+  ) {
+    return this.activityService.getAttemptResult(+id, user.id);
   }
 }

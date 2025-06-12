@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { ActivityStatus, File, Prisma } from '@prisma/client';
+import { ActivityStatus, File, GradingStatus, Prisma } from '@prisma/client';
 
 import { BufferedFile } from '@modules/files/dto/file.dto';
 import { FilesService } from '@modules/files/files.service';
@@ -152,7 +152,7 @@ export class ActivityService {
           include: {
             materials: {
               include: {
-                File: true,
+                file: true,
               },
             },
           },
@@ -212,7 +212,7 @@ export class ActivityService {
       include: {
         materials: {
           include: {
-            File: true,
+            file: true,
           },
         },
         questions: {
@@ -254,12 +254,49 @@ export class ActivityService {
       include: {
         materials: {
           include: {
-            File: true,
+            file: true,
           },
         },
         questions: {
           include: {
             options: true,
+          },
+        },
+      },
+    });
+    return activity;
+  }
+
+  async userFindOne(id: number, userId: number) {
+    const activity = await this.prisma.activity.findUnique({
+      where: { id, status: ActivityStatus.PUBLISHED },
+      include: {
+        materials: {
+          include: {
+            file: true,
+          },
+        },
+        questions: {
+          include: {
+            options: true,
+          },
+        },
+        attempts: {
+          where: {
+            studentId: userId,
+          },
+          include: {
+            answers: true,
+          },
+        },
+        _count: {
+          select: {
+            attempts: {
+              where: {
+                studentId: userId,
+              },
+            },
+            questions: true,
           },
         },
       },
@@ -280,7 +317,7 @@ export class ActivityService {
         include: {
           materials: {
             include: {
-              File: true,
+              file: true,
             },
           },
         },
@@ -317,7 +354,7 @@ export class ActivityService {
         );
 
         for (const material of filesToRemove) {
-          await this.filesService.remove(material.File.storagePath);
+          await this.filesService.remove(material.file.storagePath);
           await prisma.activityMaterial.delete({
             where: {
               activityId_fileId: {
@@ -389,7 +426,7 @@ export class ActivityService {
           include: {
             materials: {
               include: {
-                File: true,
+                file: true,
               },
             },
             questions: {
@@ -550,6 +587,15 @@ export class ActivityService {
         where: { id: input.activityId },
         include: {
           questions: true,
+          _count: {
+            select: {
+              attempts: {
+                where: {
+                  studentId: studentId,
+                },
+              },
+            },
+          },
         },
       });
 
@@ -562,15 +608,10 @@ export class ActivityService {
       }
 
       // Check if student has reached max attempts
-      const attemptsCount = await prisma.activityAttempt.count({
-        where: {
-          activityId: input.activityId,
-          studentId: studentId,
-        },
-      });
-
-      if (attemptsCount >= activity.maxAttempts) {
-        throw new BadRequestException('Maximum attempts reached');
+      if (activity._count.attempts >= activity.maxAttempts) {
+        throw new BadRequestException(
+          `Bạn đã đạt số lần làm bài tối đa (${activity.maxAttempts})`,
+        );
       }
 
       // Check if there's an ongoing attempt
@@ -583,7 +624,9 @@ export class ActivityService {
       });
 
       if (ongoingAttempt) {
-        throw new BadRequestException('You have an ongoing attempt');
+        throw new BadRequestException(
+          'Bạn đang có một bài làm bài tập đang tiến hành',
+        );
       }
 
       // Create new attempt
@@ -592,9 +635,10 @@ export class ActivityService {
           activityId: input.activityId,
           studentId: studentId,
           startedAt: new Date(),
+          attemptNumber: activity._count.attempts + 1,
         },
         include: {
-          Activity: {
+          activity: {
             include: {
               questions: {
                 include: {
@@ -620,7 +664,7 @@ export class ActivityService {
       const attempt = await prisma.activityAttempt.findUnique({
         where: { id: attemptId },
         include: {
-          Activity: true,
+          activity: true,
         },
       });
 
@@ -643,17 +687,18 @@ export class ActivityService {
       const startedAt = new Date(attempt.startedAt);
       const timeElapsed = (now.getTime() - startedAt.getTime()) / (1000 * 60);
 
-      if (timeElapsed > attempt.Activity.timeLimitMinutes) {
+      if (timeElapsed > attempt.activity.timeLimitMinutes) {
         throw new BadRequestException('Time limit exceeded');
       }
 
-      // Calculate score
       let totalScore = 0;
       const answers = [];
+      let needsManualGrading = false;
 
       for (const answer of input.answers) {
         const question = await prisma.activityQuestion.findUnique({
           where: { id: answer.questionId },
+          include: { options: true },
         });
 
         if (!question) {
@@ -662,14 +707,40 @@ export class ActivityService {
           );
         }
 
-        const isCorrect = answer.answer === question.correctAnswer;
-        const score = isCorrect ? question.points : 0;
-        totalScore += score;
+        let isCorrect = null;
+        let score = 0;
+        if (
+          attempt.activity.type === 'QUIZ' &&
+          (question.type === 'TRUE_FALSE' ||
+            question.type === 'MULTIPLE_CHOICE')
+        ) {
+          if (question.type === 'MULTIPLE_CHOICE') {
+            // Find the correct option
+            const correctOption = question.options.find((opt) => opt.isCorrect);
+            isCorrect =
+              correctOption &&
+              String(answer.selectedOptionId) === String(correctOption.id);
+            score = isCorrect ? question.points : 0;
+            totalScore += score;
+          } else if (question.type === 'TRUE_FALSE') {
+            // Find the correct option (text is 'true' or 'false')
+            const correctOption = question.options.find((opt) => opt.isCorrect);
+            isCorrect =
+              correctOption &&
+              String(answer.answer) === String(correctOption.text);
+            score = isCorrect ? question.points : 0;
+            totalScore += score;
+          }
+        } else {
+          // Needs manual grading
+          needsManualGrading = true;
+        }
 
         answers.push({
           activityAttemptId: attemptId,
           activityQuestionId: answer.questionId,
-          answer: answer.answer,
+          selectedOptionId: answer.selectedOptionId ?? null,
+          answer: answer.answer ?? null,
           isCorrect,
           score,
         });
@@ -685,14 +756,17 @@ export class ActivityService {
         data: {
           completedAt: now,
           score: totalScore,
+          gradingStatus: needsManualGrading
+            ? GradingStatus.PENDING_MANUAL
+            : GradingStatus.GRADED,
         },
         include: {
           answers: {
             include: {
-              Question: true,
+              question: true,
             },
           },
-          Activity: true,
+          activity: true,
         },
       });
 
@@ -712,10 +786,10 @@ export class ActivityService {
     return this.prisma.activityAttempt.findMany({
       where,
       include: {
-        Activity: true,
+        activity: true,
         answers: {
           include: {
-            Question: true,
+            question: true,
           },
         },
       },
@@ -729,7 +803,7 @@ export class ActivityService {
     const attempt = await this.prisma.activityAttempt.findUnique({
       where: { id: attemptId },
       include: {
-        Activity: {
+        activity: {
           include: {
             questions: {
               include: {
@@ -740,7 +814,7 @@ export class ActivityService {
         },
         answers: {
           include: {
-            Question: true,
+            question: true,
           },
         },
       },
@@ -753,6 +827,28 @@ export class ActivityService {
     if (attempt.studentId !== studentId) {
       throw new BadRequestException('This attempt does not belong to you');
     }
+
+    return attempt;
+  }
+
+  async getAttemptResult(attemptId: number, studentId: number) {
+    const attempt = await this.prisma.activityAttempt.findUnique({
+      where: { id: attemptId },
+      include: {
+        activity: true,
+        answers: {
+          include: {
+            question: {
+              include: {
+                options: true,
+              },
+            },
+          },
+        },
+        grader: true,
+        student: true,
+      },
+    });
 
     return attempt;
   }

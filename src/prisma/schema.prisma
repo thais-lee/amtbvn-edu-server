@@ -313,9 +313,9 @@ model LessonAttachment {
 /// Bảng trung gian Activity <-> File (Tài liệu cho hoạt động)
 model ActivityMaterial {
   activityId Int
-  Activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
   fileId     Int
-  File       File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  file       File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
 
   @@id([activityId, fileId])
   @@index([fileId])
@@ -431,23 +431,22 @@ model QuestionOption {
 }
 
 model ActivityAttempt {
-  id             Int       @id @default(autoincrement())
+  id             Int           @id @default(autoincrement())
   activityId     Int
   studentId      Int
-  attemptNumber  Int       @default(1)
-  startedAt      DateTime  @default(now())
+  attemptNumber  Int           @default(1)
+  startedAt      DateTime      @default(now())
   completedAt    DateTime?
   score          Float?
   graderId       Int?
   gradedAt       DateTime?
   graderFeedback String?
-  gradingStatus GradingStatus   @default(IN_PROGRESS)
+  gradingStatus  GradingStatus @default(IN_PROGRESS)
 
-
-  answers       StudentAnswer[]
-  activity      Activity        @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  student       User            @relation("UserAttempts", fields: [studentId], references: [id], onDelete: Cascade)
-  grader        User?           @relation("GradedAttempts", fields: [graderId], references: [id], onDelete: SetNull)
+  answers  StudentAnswer[]
+  activity Activity        @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  student  User            @relation("UserAttempts", fields: [studentId], references: [id], onDelete: Cascade)
+  grader   User?           @relation("GradedAttempts", fields: [graderId], references: [id], onDelete: SetNull)
 
   @@unique([activityId, studentId, attemptNumber])
   @@index([activityId])
@@ -461,17 +460,17 @@ model StudentAnswer {
   activityAttemptId  Int
   activityQuestionId Int
   selectedOptionId   Int?
-  essayAnswer        String?
+  answer             String?
   fileId             Int?    @unique()
 
   isCorrect Boolean?
   score     Float?
   feedback  String?
 
-  selectedOption   QuestionOption?  @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
-  activityQuestion ActivityQuestion @relation(fields: [activityQuestionId], references: [id], onDelete: Cascade)
-  activityAttempt  ActivityAttempt  @relation(fields: [activityAttemptId], references: [id], onDelete: Cascade)
-  file             File?            @relation(fields: [fileId], references: [id], "StudentAnswerFile")
+  option   QuestionOption?  @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+  question ActivityQuestion @relation(fields: [activityQuestionId], references: [id], onDelete: Cascade)
+  attempt  ActivityAttempt  @relation(fields: [activityAttemptId], references: [id], onDelete: Cascade)
+  file     File?            @relation(fields: [fileId], references: [id], "StudentAnswerFile")
 
   @@unique([activityAttemptId, activityQuestionId])
   @@index([activityAttemptId])
@@ -517,7 +516,7 @@ model LessonCompletion {
   userId   Int /// userId của người học
   user     User   @relation("UserLessonProgress", fields: [userId], references: [id], onDelete: Cascade)
   lessonId Int
-  Lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   isCompleted    Boolean   @default(false) /// Đã hoàn thành?
   completedAt    DateTime? /// Ngày hoàn thành

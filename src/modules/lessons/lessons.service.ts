@@ -179,7 +179,7 @@ export class LessonsService {
             updatedAt: true,
             materials: {
               select: {
-                File: {
+                file: {
                   select: {
                     id: true,
                     fileName: true,
@@ -221,10 +221,10 @@ export class LessonsService {
         materials: await Promise.all(
           activity.materials.map(async (material) => ({
             ...material,
-            File: {
-              ...material.File,
+            file: {
+              ...material.file,
               presignedUrl: await this.filesService.getPresignedUrlById(
-                material.File.id,
+                material.file.id,
               ),
             },
           })),
