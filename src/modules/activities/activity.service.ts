@@ -21,6 +21,7 @@ import {
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { GetActivityDto } from './dto/get-lesson-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
+import { GradeAttemptDto } from './dto/grade-attempt.dto';
 
 @Injectable()
 export class ActivityService {
@@ -770,13 +771,19 @@ export class ActivityService {
         },
       });
 
+      if (attempt.activity.type === 'ASSIGNMENT') {
+        return {
+          success: true,
+          message: 'Đã nộp bài thành công',
+        };
+      }
       return updatedAttempt;
     });
   }
 
   async getAttempts(input: GetActivityAttemptsDto, studentId: number) {
     const where: Prisma.ActivityAttemptWhereInput = {
-      studentId: input.studentId || studentId,
+      studentId,
     };
 
     if (input.activityId) {
@@ -786,15 +793,14 @@ export class ActivityService {
     return this.prisma.activityAttempt.findMany({
       where,
       include: {
+        student: true,
         activity: true,
         answers: {
           include: {
             question: true,
+            option: true,
           },
         },
-      },
-      orderBy: {
-        startedAt: 'desc',
       },
     });
   }
@@ -851,5 +857,107 @@ export class ActivityService {
     });
 
     return attempt;
+  }
+
+  async adminGetAttempts(input: GetActivityAttemptsDto) {
+    const where: Prisma.ActivityAttemptWhereInput = {};
+
+    if (input.activityId) {
+      where.activityId = input.activityId;
+    }
+
+    const attempts = await this.prisma.activityAttempt.findMany({
+      where,
+      include: {
+        student: true,
+        activity: true,
+      },
+      orderBy: {
+        startedAt: 'desc',
+      },
+      take: input.take ?? 20,
+      skip: input.skip ?? 0,
+    });
+
+    const total = await this.prisma.activityAttempt.count({
+      where,
+    });
+
+    return {
+      items: attempts,
+      total,
+    };
+  }
+
+  async adminGetAttemptDetail(id: number) {
+    const attempt = await this.prisma.activityAttempt.findUnique({
+      where: { id },
+      include: {
+        activity: true,
+        answers: {
+          include: {
+            question: {
+              include: {
+                options: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return attempt;
+  }
+
+  async gradeAttempt(id: number, input: GradeAttemptDto) {
+    return this.prisma.$transaction(async (prisma) => {
+      // Check if attempt exists
+      const attempt = await prisma.activityAttempt.findUnique({
+        where: { id },
+        include: {
+          answers: true,
+        },
+      });
+
+      if (!attempt) {
+        throw new NotFoundException('Attempt not found');
+      }
+
+      // Update answers with scores and feedback
+      for (const answerGrade of input.answers) {
+        await prisma.studentAnswer.update({
+          where: { id: answerGrade.id },
+          data: {
+            score: answerGrade.score,
+            feedback: answerGrade.feedback,
+          },
+        });
+      }
+
+      // Calculate total score
+      const totalScore = input.answers.reduce((sum, a) => sum + a.score, 0);
+
+      // Update attempt with overall feedback and status
+      const updatedAttempt = await prisma.activityAttempt.update({
+        where: { id },
+        data: {
+          score: totalScore,
+          graderFeedback: input.overallFeedback,
+          gradingStatus: GradingStatus.GRADED,
+          gradedAt: new Date(),
+        },
+        include: {
+          answers: {
+            include: {
+              question: true,
+            },
+          },
+          activity: true,
+          student: true,
+        },
+      });
+
+      return updatedAttempt;
+    });
   }
 }

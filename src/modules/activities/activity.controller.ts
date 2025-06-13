@@ -38,6 +38,7 @@ import {
 } from './dto/activity-attempt.dto';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { GetActivityDto } from './dto/get-lesson-activity.dto';
+import { GradeAttemptDto } from './dto/grade-attempt.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 
 @Controller('activities')
@@ -200,8 +201,11 @@ export class ActivityController {
   @ApiResponse({ status: 200, description: 'Attempts retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
-  async getAttempts(@Query() query: GetActivityAttemptsDto) {
-    return this.activityService.getAttempts(query, 1); // TODO: Replace with actual student ID from auth
+  async getAttempts(
+    @Query() query: GetActivityAttemptsDto,
+    @CurrentUser() user: UserBasicDto,
+  ) {
+    return this.activityService.getAttempts(query, user.id);
   }
 
   @Get('attempts/:id')
@@ -212,8 +216,8 @@ export class ActivityController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiResponse({ status: 404, description: 'Attempt not found' })
-  async getAttempt(@Param('id') id: string) {
-    return this.activityService.getAttempt(+id, 1); // TODO: Replace with actual student ID from auth
+  async getAttempt(@Param('id') id: string, @CurrentUser() user: UserBasicDto) {
+    return this.activityService.getAttempt(+id, user.id); // TODO: Replace with actual student ID from auth
   }
 
   @Get('attempts/:id/result')
@@ -224,5 +228,42 @@ export class ActivityController {
     @CurrentUser() user: UserBasicDto,
   ) {
     return this.activityService.getAttemptResult(+id, user.id);
+  }
+
+  @Get('attempts/admin/list')
+  @RolesAuth([ERole.USER, ERole.ADMIN, ERole.TEACHER])
+  @ApiOperation({ summary: 'Admin get activity attempts' })
+  @ApiQuery({ name: 'activityId', required: false, type: Number })
+  @ApiQuery({ name: 'studentId', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Attempts retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  async adminGetAttempts(@Query() query: GetActivityAttemptsDto) {
+    return this.activityService.adminGetAttempts(query);
+  }
+
+  @Get('attempts/admin/:id')
+  @RolesAuth([ERole.ADMIN, ERole.TEACHER])
+  @ApiOperation({ summary: 'Admin get a single activity attempt' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Attempt retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Attempt not found' })
+  async adminGetAttemptDetail(@Param('id') id: string) {
+    return this.activityService.adminGetAttemptDetail(+id);
+  }
+
+  @Post('attempts/admin/:id/grade')
+  @RolesAuth([ERole.ADMIN, ERole.TEACHER])
+  @ApiOperation({ summary: 'Grade an activity attempt' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Attempt graded successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Attempt not found' })
+  async gradeAttempt(@Param('id') id: string, @Body() input: GradeAttemptDto) {
+    return this.activityService.gradeAttempt(+id, input);
   }
 }

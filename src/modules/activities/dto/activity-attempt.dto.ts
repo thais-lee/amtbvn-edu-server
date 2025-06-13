@@ -10,6 +10,8 @@ import {
   ValidateNested,
 } from 'class-validator';
 
+import { PaginatedInput } from '@shared/base-get-input';
+
 export class AnswerDto {
   @ApiProperty()
   @IsNotEmpty()
@@ -51,14 +53,16 @@ export class SubmitActivityAttemptDto {
   answers: AnswerDto[];
 }
 
-export class GetActivityAttemptsDto {
+export class GetActivityAttemptsDto extends PaginatedInput {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsNumber()
+  @Transform(({ value }) => Number(value))
   activityId?: number;
 
   @ApiProperty({ required: false })
   @IsOptional()
   @IsNumber()
+  @Transform(({ value }) => Number(value))
   studentId?: number;
 }
