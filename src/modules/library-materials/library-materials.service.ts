@@ -26,106 +26,38 @@ export class LibraryMaterialsService {
   async create(
     createLibraryMaterialDto: CreateLibraryMaterialDto,
     userId: number,
-    files: Express.Multer.File[],
   ) {
-    if (!files || files.length === 0) {
+    // Validate fileIds
+    if (
+      !createLibraryMaterialDto.fileIds ||
+      createLibraryMaterialDto.fileIds.length === 0
+    ) {
       throw new BadRequestException('At least one file is required');
     }
-
-    this.logger.log('DTO received:', JSON.stringify(createLibraryMaterialDto));
-
-    // Validate file types
-    const allowedMimeTypes = [
-      // Documents
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      // Videos
-      'video/mp4',
-      'video/mpeg',
-      'video/quicktime',
-      'video/x-msvideo',
-      'video/x-ms-wmv',
-      // Audio
-      'audio/mpeg',
-      'audio/mp3',
-      'audio/wav',
-      'audio/ogg',
-      'audio/m4a',
-      // Images
-      'image/jpeg',
-      'image/png',
-      'image/gif',
-      'image/webp',
-      'image/svg+xml',
-      'image/tiff',
-    ];
-
-    for (const file of files) {
-      if (!allowedMimeTypes.includes(file.mimetype)) {
-        throw new BadRequestException(
-          `File type ${file.mimetype} is not supported. Supported types are: PDF, DOC, DOCX, MP4, MPEG, MOV, AVI, WMV, MP3, WAV, OGG, M4A`,
-        );
-      }
-    }
-
-    try {
-      // Use transaction to ensure data consistency
-      return await this.prisma.$transaction(async (prisma) => {
-        // Prepare data for creation
-        const data = {
-          ...createLibraryMaterialDto,
-          categoryId: Number(createLibraryMaterialDto.categoryId),
-          tags:
-            typeof createLibraryMaterialDto.tags === 'string'
-              ? JSON.parse(createLibraryMaterialDto.tags)
-              : createLibraryMaterialDto.tags,
-        };
-
-        // Create library material
-        const libraryMaterial = await prisma.libraryMaterial.create({
-          data,
-        });
-
-        if (files.some((f) => !f)) {
-          this.logger.error('One or more files are undefined!', files);
-          throw new BadRequestException(
-            'One or more uploaded files are invalid.',
-          );
-        }
-
-        // Upload files and create file records
-        const filePromises = files
-          .filter(Boolean)
-          .map((file) =>
-            this.filesService.uploadFileAndRecord(
-              prisma,
-              file,
-              'library-materials',
-              userId,
-              createLibraryMaterialDto.description,
-              libraryMaterial.id,
-            ),
-          );
-
-        this.logger.log('libraryMaterial:', libraryMaterial.id);
-        this.logger.log('user:', userId);
-
-        await Promise.all(filePromises);
-
-        // Return library material with its files
-        return prisma.libraryMaterial.findUnique({
-          where: { id: libraryMaterial.id },
-          include: {
-            files: true,
-          },
-        });
+    // Use transaction to ensure data consistency
+    return await this.prisma.$transaction(async (prisma) => {
+      const { categoryId, fileIds, ...rest } = createLibraryMaterialDto;
+      const data: any = {
+        ...rest,
+        tags: typeof rest.tags === 'string' ? JSON.parse(rest.tags) : rest.tags,
+        category: { connect: { id: Number(categoryId) } },
+      };
+      delete data.fileIdsToRemove;
+      // Create library material
+      const libraryMaterial = await prisma.libraryMaterial.create({
+        data,
       });
-    } catch (error) {
-      throw new BadRequestException(
-        error.message || 'Failed to create library material',
-      );
-    }
+      // Associate files
+      await prisma.file.updateMany({
+        where: { id: { in: fileIds } },
+        data: { libraryMaterialId: libraryMaterial.id },
+      });
+      // Return with files
+      return prisma.libraryMaterial.findUnique({
+        where: { id: libraryMaterial.id },
+        include: { files: true, category: true },
+      });
+    });
   }
 
   async findAll(query: GetLibraryMaterialDto) {
@@ -178,16 +110,68 @@ export class LibraryMaterialsService {
     return libraryMaterial;
   }
 
-  async update(id: number, updateLibraryMaterialDto: UpdateLibraryMaterialDto) {
+  async update(
+    id: number,
+    updateLibraryMaterialDto: UpdateLibraryMaterialDto,
+    userId: number,
+  ) {
     const libraryMaterial = await this.findOne(id);
-
-    return this.prisma.libraryMaterial.update({
-      where: { id },
-      data: updateLibraryMaterialDto,
-      include: {
-        files: true,
-        category: true,
-      },
+    // Remove files if requested
+    if (
+      updateLibraryMaterialDto.fileIdsToRemove &&
+      updateLibraryMaterialDto.fileIdsToRemove.length > 0
+    ) {
+      // Get file records for storage path
+      const filesToRemove = await this.prisma.file.findMany({
+        where: { id: { in: updateLibraryMaterialDto.fileIdsToRemove } },
+      });
+      // Delete from storage
+      for (const file of filesToRemove) {
+        try {
+          await this.filesService.deleteFile(file.id);
+        } catch (e) {
+          this.logger.warn(
+            `Failed to remove file from storage: ${file.storagePath}`,
+          );
+        }
+      }
+    }
+    // Update metadata
+    const { fileIdsToRemove, categoryId, fileIds, ...updateData } =
+      updateLibraryMaterialDto;
+    // Start a transaction to ensure data consistency
+    return this.prisma.$transaction(async (prisma) => {
+      // Update the library material metadata
+      const updatedMaterial = await prisma.libraryMaterial.update({
+        where: { id },
+        data: {
+          ...updateData,
+          category: categoryId
+            ? {
+                connect: { id: categoryId },
+              }
+            : undefined,
+        },
+        include: {
+          files: true,
+          category: true,
+        },
+      });
+      // Associate new files if provided
+      if (fileIds && fileIds.length > 0) {
+        await prisma.file.updateMany({
+          where: { id: { in: fileIds } },
+          data: { libraryMaterialId: id },
+        });
+      }
+      // Return the final updated material with all files
+      return prisma.libraryMaterial.findUnique({
+        where: { id },
+        include: {
+          files: true,
+          category: true,
+        },
+      });
     });
   }
 
@@ -221,5 +205,26 @@ export class LibraryMaterialsService {
 
       return { message: 'Library materials deleted successfully' };
     });
+  }
+
+  async getFileDownloadUrl(materialId: number, fileId: number) {
+    // Ensure the file belongs to the material
+    const material = await this.findOne(materialId);
+    const file = material.files.find((f) => f.id === fileId);
+    if (!file) {
+      throw new NotFoundException('File not found in this material');
+    }
+    // Extract storage path relative to bucket
+    let storagePath = file.storagePath;
+    const bucketIndex = storagePath.indexOf(
+      process.env.MINIO_DEFAULT_BUCKET + '/',
+    );
+    if (bucketIndex !== -1) {
+      storagePath = storagePath.substring(
+        bucketIndex + process.env.MINIO_DEFAULT_BUCKET.length + 1,
+      );
+    }
+    const url = await this.filesService.getPresignedUrl(storagePath);
+    return { url };
   }
 }

@@ -106,13 +106,15 @@ export class FilesService {
 
   public async uploadFile(file: Express.Multer.File, folder: string = 'files') {
     try {
+      // Normalize file name to NFC
+      const normalizedFileName = file.originalname.normalize('NFC');
       const metaData = {
         'Content-Type': file.mimetype,
       };
 
       const uploadedFile = await this.minioService.putObject(
         this.bucketName,
-        `${folder}/${file.originalname}`,
+        `${folder}/${normalizedFileName}`,
         file.buffer,
         file.size,
         metaData,
@@ -124,7 +126,7 @@ export class FilesService {
       }
 
       return {
-        filePath: `${endpointWithProtocol}:${this.port}/${this.bucketName}/${folder}/${file.originalname}`,
+        filePath: `${endpointWithProtocol}:${this.port}/${this.bucketName}/${folder}/${normalizedFileName}`,
         etag: uploadedFile.etag,
       };
     } catch (error) {
@@ -175,17 +177,22 @@ export class FilesService {
       description,
       libraryMaterialId,
     });
+    console.log(file.originalname);
+    console.log(file.filename);
+    
     // Trả về File object từ Prisma
     try {
+      // Normalize file name to NFC
+      const normalizedFileName = file.originalname.normalize('NFC');
       const timestamp = Date.now().toString();
       const hashedFileName = crypto
         .createHash('md5')
-        .update(timestamp + file.originalname) // Thêm originalname để tăng tính duy nhất
+        .update(timestamp + normalizedFileName) // Thêm originalname để tăng tính duy nhất
         .digest('hex');
 
-      const extension = file.originalname.substring(
-        file.originalname.lastIndexOf('.'),
-        file.originalname.length,
+      const extension = normalizedFileName.substring(
+        normalizedFileName.lastIndexOf('.'),
+        normalizedFileName.length,
       );
 
       let endpointWithProtocol = this.endpoint;
@@ -212,7 +219,7 @@ export class FilesService {
       // 2. Create File record in Database
       const fileRecord = await prisma.file.create({
         data: {
-          fileName: file.originalname, // Lưu tên gốc
+          fileName: normalizedFileName, // Lưu tên gốc đã normalize
           storagePath: fileUrl, // Lưu đường dẫn trên Minio
           mimeType: file.mimetype,
           size: file.size,

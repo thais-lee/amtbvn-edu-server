@@ -2,10 +2,14 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ApiProperty } from '@nestjs/swagger';
 
 import { Transform } from 'class-transformer';
-import { IsArray, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { IsNotEmpty } from 'class-validator';
-
-import { FileDto } from '@modules/files/dto/file.dto';
 
 export class CreateLibraryMaterialDto {
   @ApiProperty()
@@ -28,4 +32,11 @@ export class CreateLibraryMaterialDto {
   @IsNumber()
   @Transform(({ value }) => Number(value))
   categoryId: number;
+
+  @IsArray()
+  @IsInt({ each: true })
+  @Transform(({ value }) => {
+    return value.map((id: string) => Number(id));
+  })
+  fileIds: number[];
 }

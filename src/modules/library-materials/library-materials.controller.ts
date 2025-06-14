@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -27,6 +28,7 @@ import { GetLibraryMaterialDto } from './dto/get-library-material.dto';
 import { LibraryMaterialDto } from './dto/library-material.dto';
 import { UpdateLibraryMaterialDto } from './dto/update-library-material.dto';
 import { LibraryMaterialsService } from './library-materials.service';
+import { FilesService } from '@modules/files/files.service';
 
 @Controller('library-materials')
 @ApiBearerAuth()
@@ -36,39 +38,21 @@ import { LibraryMaterialsService } from './library-materials.service';
 export class LibraryMaterialsController {
   constructor(
     private readonly libraryMaterialsService: LibraryMaterialsService,
+    private readonly filesService: FilesService,
   ) {}
 
   @Post('create')
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        file: { type: 'string', format: 'binary' },
-        createLibraryMaterialDto: {
-          type: 'object',
-          properties: {
-            name: { type: 'string' },
-            description: { type: 'string' },
-            type: { type: 'string' },
-            category: { type: 'string' },
-          },
-        },
-      },
-    },
-  })
-  @UseInterceptors(FilesInterceptor('files'))
+  @ApiBody({ type: CreateLibraryMaterialDto })
   async create(
     @Body() createLibraryMaterialDto: CreateLibraryMaterialDto,
     @CurrentUser() user: User,
-    @UploadedFiles() files: Express.Multer.File[],
   ) {
     return this.libraryMaterialsService.create(
       createLibraryMaterialDto,
       user.id,
-      files,
     );
   }
+
   @Get()
   @ApiArrayResponse(LibraryMaterialDto)
   findAll(@Query() query: GetLibraryMaterialDto) {
@@ -81,11 +65,17 @@ export class LibraryMaterialsController {
   }
 
   @Patch(':id')
+  @ApiBody({ type: UpdateLibraryMaterialDto })
   update(
     @Param('id') id: string,
     @Body() updateLibraryMaterialDto: UpdateLibraryMaterialDto,
+    @CurrentUser() user: User,
   ) {
-    return this.libraryMaterialsService.update(+id, updateLibraryMaterialDto);
+    return this.libraryMaterialsService.update(
+      +id,
+      updateLibraryMaterialDto,
+      user.id,
+    );
   }
 
   @Delete(':id')
@@ -96,5 +86,13 @@ export class LibraryMaterialsController {
   @Delete('delete-many')
   deleteMany(@Body() input: DeleteManyLibraryMaterialDto) {
     return this.libraryMaterialsService.removeMany(input.ids);
+  }
+
+  @Get(':materialId/files/:fileId/download')
+  async downloadFile(
+    @Param('materialId') materialId: string,
+    @Param('fileId') fileId: string,
+  ) {
+    return this.libraryMaterialsService.getFileDownloadUrl(+materialId, +fileId);
   }
 }

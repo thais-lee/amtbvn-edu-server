@@ -1,7 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsInt, IsOptional, ArrayNotEmpty, ArrayUnique } from 'class-validator';
 
 import { LessonStatus } from '@prisma/client';
+import {
+  ArrayNotEmpty,
+  ArrayUnique,
+  IsArray,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+} from 'class-validator';
 
 export class CreateLessonDto {
   @ApiProperty()
@@ -17,19 +24,27 @@ export class CreateLessonDto {
   status: LessonStatus;
 
   @ApiProperty()
+  @IsInt()
+  @IsNotEmpty()
   courseId: number;
 
   @ApiPropertyOptional()
   previousId: number;
 
-  @ApiPropertyOptional({ type: [Number], description: 'IDs of media files (video/audio)' })
+  @ApiPropertyOptional({
+    type: [Number],
+    description: 'IDs of media files (video/audio)',
+  })
   @IsOptional()
   @IsArray()
   @ArrayUnique()
   @IsInt({ each: true })
   mediaFileIds?: number[];
 
-  @ApiPropertyOptional({ type: [Number], description: 'IDs of document files (pdf, doc, etc.)' })
+  @ApiPropertyOptional({
+    type: [Number],
+    description: 'IDs of document files (pdf, doc, etc.)',
+  })
   @IsOptional()
   @IsArray()
   @ArrayUnique()
