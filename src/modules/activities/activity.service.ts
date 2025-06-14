@@ -790,6 +790,10 @@ export class ActivityService {
       where.activityId = input.activityId;
     }
 
+    if (input.studentId) {
+      where.studentId = input.studentId;
+    }
+
     return this.prisma.activityAttempt.findMany({
       where,
       include: {

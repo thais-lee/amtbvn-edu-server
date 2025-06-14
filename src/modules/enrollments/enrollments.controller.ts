@@ -71,8 +71,25 @@ export class EnrollmentsController {
     );
   }
 
+  //re enroll after reject
+  @Patch('user/re-enroll')
+  @ApiResponse(EnrollmentDto)
+  updateByUser(@Query() params: GetEnrollmentDto, @CurrentUser() user: User) {
+    return this.enrollmentsService.updateByUser(
+      user.id,
+      params.courseId,
+      params,
+    );
+  }
+
   @Delete('delete')
   remove(@Query() params: GetEnrollmentDto) {
     return this.enrollmentsService.remove(params.userId, params.courseId);
+  }
+
+  @Delete('/user/delete')
+  @ApiResponse(EnrollmentDto)
+  removeByUser(@Query() params: GetEnrollmentDto, @CurrentUser() user: User) {
+    return this.enrollmentsService.remove(user.id, params.courseId);
   }
 }

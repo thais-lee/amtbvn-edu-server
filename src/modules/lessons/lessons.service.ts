@@ -139,6 +139,12 @@ export class LessonsService {
         createdAt: true,
         updatedAt: true,
         isImportant: true,
+        course: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         previous: {
           select: { id: true, title: true, isImportant: true },
         },

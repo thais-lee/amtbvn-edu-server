@@ -78,6 +78,16 @@ export class EnrollmentsService {
     });
   }
 
+  async updateByUser(
+    userId: number,
+    courseId: number,
+    updateEnrollmentDto: UpdateEnrollmentDto,
+  ) {
+    return this.update(userId, courseId, {
+      status: EnrollmentStatus.PENDING,
+    });
+  }
+
   async remove(userId: number, courseId: number) {
     const enroll = await this.prisma.studentCourseEnrollment.findUnique({
       where: {

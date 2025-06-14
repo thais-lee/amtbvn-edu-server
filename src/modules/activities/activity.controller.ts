@@ -111,6 +111,21 @@ export class ActivityController {
     return this.activityService.userFindAll(query, user.id);
   }
 
+  @Get('attempts')
+  @RolesAuth([ERole.USER, ERole.ADMIN, ERole.TEACHER])
+  @ApiOperation({ summary: 'Get activity attempts' })
+  @ApiQuery({ name: 'activityId', required: false, type: Number })
+  @ApiQuery({ name: 'studentId', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Attempts retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  async getAttempts(
+    @Query() query: GetActivityAttemptsDto,
+    @CurrentUser() user: UserBasicDto,
+  ) {
+    return this.activityService.getAttempts(query, user.id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a single activity by ID' })
   @ApiParam({ name: 'id', type: Number })
@@ -191,21 +206,6 @@ export class ActivityController {
     @CurrentUser() user: UserBasicDto,
   ) {
     return this.activityService.submitAttempt(+id, input, user.id);
-  }
-
-  @Get('attempts')
-  @RolesAuth([ERole.USER, ERole.ADMIN, ERole.TEACHER])
-  @ApiOperation({ summary: 'Get activity attempts' })
-  @ApiQuery({ name: 'activityId', required: false, type: Number })
-  @ApiQuery({ name: 'studentId', required: false, type: Number })
-  @ApiResponse({ status: 200, description: 'Attempts retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden' })
-  async getAttempts(
-    @Query() query: GetActivityAttemptsDto,
-    @CurrentUser() user: UserBasicDto,
-  ) {
-    return this.activityService.getAttempts(query, user.id);
   }
 
   @Get('attempts/:id')
