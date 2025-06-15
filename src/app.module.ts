@@ -28,6 +28,7 @@ import { ActivityModule } from './modules/activities/activity.module';
 import { ArticlesModule } from '@modules/articles/articles.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { LibraryMaterialsModule } from './modules/library-materials/library-materials.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { LibraryMaterialsModule } from './modules/library-materials/library-mate
     ArticlesModule,
     NotificationsModule,
     LibraryMaterialsModule,
+    HealthModule,
   ],
   controllers: [UsersController],
   providers: [UsersService],

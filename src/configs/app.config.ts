@@ -51,12 +51,12 @@ export default registerAs<TAppConfig>('app', () => {
 
   return {
     nodeEnv: (process.env.NODE_ENV as ENodeEnv) || ENodeEnv.DEVELOPMENT,
-    host: process.env.HOST || 'http://localhost',
-    port: parseInt(process.env.PORT) || 4000,
+    host: process.env.HOST || '0.0.0.0',
+    port: parseInt(process.env.PORT || '3000', 10),
     enableTLS: process.env.ENABLE_TLS === 'true',
     sslCertPath: process.env.SSL_CERT_PATH,
     sslKeyPath: process.env.SSL_KEY_PATH,
-    apiPrefix: process.env.API_PREFIX || 'api',
-    baseUrl: process.env.BASE_URL || 'http://localhost:4000',
+    apiPrefix: 'api',
+    baseUrl: process.env.BASE_URL || 'http://localhost:3000',
   };
 });
