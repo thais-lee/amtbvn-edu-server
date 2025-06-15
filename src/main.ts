@@ -39,7 +39,11 @@ async function bootstrap() {
 
   // Get app configs
   const configService = app.get(ConfigService);
-  const port = process.env.PORT || 3000;
+
+  const host = configService.getOrThrow<TAppConfig>('app').host;
+  const port = configService.getOrThrow<TAppConfig>('app').port;
+  const apiPrefix = configService.getOrThrow<TAppConfig>('app').apiPrefix;
+  // End Get app configs
 
   // Global setup
   app.setGlobalPrefix('api');
@@ -57,7 +61,7 @@ async function bootstrap() {
       .addBearerAuth()
       .build(),
   );
-  SwaggerModule.setup('api', app, document, {
+  SwaggerModule.setup(apiPrefix, app, document, {
     swaggerOptions: {
       persistAuthorization: true,
     },
@@ -67,8 +71,8 @@ async function bootstrap() {
   await app.startAllMicroservices();
   CLogger.log('Microservices are running', 'Bootstrap');
 
-  await app.listen(port, '0.0.0.0', () => {
-    CLogger.log(`Server is running on port ${port}`, 'Bootstrap');
+  await app.listen(port, host, () => {
+    CLogger.log(`Server is running on ${host}:${port}`, 'Bootstrap');
   });
 }
 
