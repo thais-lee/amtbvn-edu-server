@@ -69,7 +69,7 @@ import { HealthModule } from './health/health.module';
     ArticlesModule,
     NotificationsModule,
     LibraryMaterialsModule,
-    HealthModule,
+    // HealthModule,
   ],
   controllers: [UsersController],
   providers: [UsersService],
