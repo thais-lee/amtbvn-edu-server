@@ -279,12 +279,22 @@ export class FilesService {
    * Note: Ensure bucket policy allows GetObject.
    */
   public async getPresignedUrl(storagePath: string): Promise<string> {
-    // Thời gian hết hạn URL (ví dụ: 1 giờ)
     const expiryInSeconds = 60 * 60;
     try {
+      // Extract the relative path from the full URL
+      let relativePath = storagePath;
+      
+      // Remove protocol and host
+      const bucketIndex = storagePath.indexOf(this.bucketName + '/');
+      if (bucketIndex !== -1) {
+        relativePath = storagePath.substring(bucketIndex + this.bucketName.length + 1);
+      }
+
+      this.logger.log(`Getting presigned URL for relative path: ${relativePath}`);
+      
       const url = await this.minioService.presignedGetObject(
         this.bucketName,
-        storagePath,
+        relativePath,
         expiryInSeconds,
       );
       return url;
@@ -301,7 +311,7 @@ export class FilesService {
     return this.getPresignedUrl(file.storagePath);
   }
 
-  remove(filePath: string) {
+  remove(filePath: string) { 
     return this.minioService.removeObject(this.bucketName, filePath);
   }
 
