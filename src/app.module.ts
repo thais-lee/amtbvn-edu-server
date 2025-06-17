@@ -29,6 +29,7 @@ import { ArticlesModule } from '@modules/articles/articles.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { LibraryMaterialsModule } from './modules/library-materials/library-materials.module';
 import { HealthModule } from './health/health.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { HealthModule } from './health/health.module';
     NotificationsModule,
     LibraryMaterialsModule,
     // HealthModule,
+    DashboardModule,
   ],
   controllers: [UsersController],
   providers: [UsersService],
