@@ -84,6 +84,26 @@ export class CoursesService {
     });
   }
 
+  async findOneByUser(id: number, userId: number) {
+    return this.prisma.course.findUnique({
+      where: { id },
+      include: {
+        category: true,
+        enrollments: true,
+        lessons: {
+          include: {
+            completions: {
+              where: { userId },
+              select: { isCompleted: true, completedAt: true },
+            },
+          },
+        },
+        activities: true,
+        libraryMaterialsUsed: true,
+      },
+    });
+  }
+
   async findNotEnrolledCourse(userId: number, input: GetCoursesDto) {
     const courses = await this.prisma.course.findMany({
       where: {
@@ -264,6 +284,14 @@ export class CoursesService {
             category: {
               select: {
                 name: true,
+              },
+            },
+            lessons: {
+              include: {
+                completions: {
+                  where: { userId },
+                  select: { isCompleted: true, completedAt: true },
+                },
               },
             },
           },

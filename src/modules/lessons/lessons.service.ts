@@ -72,6 +72,129 @@ export class LessonsService {
     });
   }
 
+  async userFindOne(id: number, userId: number) {
+    const lesson = (await this.prisma.lesson.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        courseId: true,
+        previousId: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        isImportant: true,
+        course: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        previous: {
+          select: { id: true, title: true, isImportant: true },
+        },
+        next: {
+          select: { id: true, title: true, isImportant: true },
+        },
+        completions: {
+          where: { userId },
+          select: { isCompleted: true, completedAt: true },
+        },
+        attachments: {
+          select: {
+            fileId: true,
+            type: true,
+            file: {
+              select: {
+                id: true,
+                fileName: true,
+                mimeType: true,
+                size: true,
+                storagePath: true,
+                uploadedBy: true,
+                createdAt: true,
+                updatedAt: true,
+              },
+            },
+          },
+        },
+        activities: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            type: true,
+            status: true,
+            timeLimitMinutes: true,
+            dueDate: true,
+            maxAttempts: true,
+            passScore: true,
+            shuffleQuestions: true,
+            createdAt: true,
+            updatedAt: true,
+            materials: {
+              select: {
+                file: {
+                  select: {
+                    id: true,
+                    fileName: true,
+                    mimeType: true,
+                    size: true,
+                    storagePath: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    })) as LessonWithAttachments | null;
+    if (!lesson) return null;
+
+    // Find the first video attachment
+    const videoAtt = lesson.attachments.find(
+      (att) => att.type === 'VIDEO' && att.file?.mimeType?.startsWith('video/'),
+    );
+    let videoAttachment = null;
+    if (videoAtt) {
+      const presigned = await this.filesService.getPresignedUrlById(
+        videoAtt.fileId,
+      );
+      videoAttachment = {
+        ...videoAtt,
+        file: {
+          ...videoAtt.file,
+          presignedUrl: presigned,
+        },
+      };
+    }
+
+    // Get presigned URLs for activity materials
+    const activitiesWithPresignedUrls = await Promise.all(
+      lesson.activities.map(async (activity) => ({
+        ...activity,
+        materials: await Promise.all(
+          activity.materials.map(async (material) => ({
+            ...material,
+            file: {
+              ...material.file,
+              presignedUrl: await this.filesService.getPresignedUrlById(
+                material.file.id,
+              ),
+            },
+          })),
+        ),
+      })),
+    );
+
+    return {
+      ...lesson,
+      videoAttachment,
+      activities: activitiesWithPresignedUrls,
+    };
+  }
+
   async userFindAll(input: GetLessonDto, userId: number) {
     const lessons = await this.prisma.lesson.findMany({
       where: {
@@ -307,5 +430,13 @@ export class LessonsService {
     } catch (error) {
       throw new NotFoundException('Lesson not found');
     }
+  }
+
+  async completeLesson(lessonId: number, userId: number) {
+    return this.prisma.lessonCompletion.upsert({
+      where: { userId_lessonId: { userId, lessonId } },
+      update: { isCompleted: true, completedAt: new Date() },
+      create: { userId, lessonId, isCompleted: true, completedAt: new Date() },
+    });
   }
 }

@@ -82,6 +82,17 @@ export class LessonsController {
     return this.lessonsService.userFindAll(query, user.id);
   }
 
+  @Get('user/:id')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'User get a lesson by id' })
+  @ApiResponse({ type: LessonDetailDto })
+  async userFindOne(
+    @Param('id') id: string,
+    @CurrentUser() user: UserBasicDto,
+  ) {
+    return this.lessonsService.userFindOne(+id, user.id);
+  }
+
   @Get(':id')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get a lesson by id' })
@@ -183,5 +194,15 @@ export class LessonsController {
     @Param('activityId') activityId: string,
   ) {
     return this.activityService.remove(+activityId);
+  }
+
+  @Patch(':id/complete')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Mark lesson as completed for current user' })
+  async completeLesson(
+    @Param('id') id: string,
+    @CurrentUser() user: UserBasicDto,
+  ) {
+    return this.lessonsService.completeLesson(+id, user.id);
   }
 }

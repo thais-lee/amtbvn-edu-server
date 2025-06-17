@@ -62,6 +62,12 @@ export class CoursesController {
     return this.coursesService.findEnrolledCourse(user.id, query);
   }
 
+  @Get('/user/:id')
+  @ApiResponse(CourseDto)
+  findOneByUser(@Param('id') id: number, @CurrentUser() user) {
+    return this.coursesService.findOneByUser(id, user.id);
+  }
+
   @Get('/not-enrolled')
   @ApiArrayResponse(CourseDto)
   findAllNotEnrolled(@Query() query: GetCoursesDto, @CurrentUser() user) {
