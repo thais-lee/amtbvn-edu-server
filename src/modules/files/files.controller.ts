@@ -129,12 +129,12 @@ export class FilesController {
   }
 
   // Endpoint để lấy presigned URL (có thể giữ lại hoặc không tùy nhu cầu)
-  @Get('file-url/:id')
+  @Get('file-url-by-id/:id')
   @ApiResponse(String) // Trả về chuỗi URL
   async getPresignedFileUrl(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: number,
   ): Promise<{ url: string }> {
-    const url = await this.filesService.getPresignedUrlById(id);
+    const url = await this.filesService.getPresignedUrlById(+id);
     return { url };
   }
 
