@@ -20,8 +20,8 @@ import {
 } from './dto/activity-attempt.dto';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { GetActivityDto } from './dto/get-lesson-activity.dto';
-import { UpdateActivityDto } from './dto/update-activity.dto';
 import { GradeAttemptDto } from './dto/grade-attempt.dto';
+import { UpdateActivityDto } from './dto/update-activity.dto';
 
 @Injectable()
 export class ActivityService {
@@ -711,27 +711,16 @@ export class ActivityService {
         let isCorrect = null;
         let score = 0;
         if (
-          attempt.activity.type === 'QUIZ' &&
-          (question.type === 'TRUE_FALSE' ||
-            question.type === 'MULTIPLE_CHOICE')
+          question.type === 'TRUE_FALSE' ||
+          question.type === 'MULTIPLE_CHOICE'
         ) {
-          if (question.type === 'MULTIPLE_CHOICE') {
-            // Find the correct option
-            const correctOption = question.options.find((opt) => opt.isCorrect);
-            isCorrect =
-              correctOption &&
-              String(answer.selectedOptionId) === String(correctOption.id);
-            score = isCorrect ? question.points : 0;
-            totalScore += score;
-          } else if (question.type === 'TRUE_FALSE') {
-            // Find the correct option (text is 'true' or 'false')
-            const correctOption = question.options.find((opt) => opt.isCorrect);
-            isCorrect =
-              correctOption &&
-              String(answer.answer) === String(correctOption.text);
-            score = isCorrect ? question.points : 0;
-            totalScore += score;
-          }
+          // Find the correct option
+          const correctOption = question.options.find((opt) => opt.isCorrect);
+          isCorrect =
+            correctOption &&
+            String(answer.selectedOptionId) === String(correctOption.id);
+          score = isCorrect ? question.points : 0;
+          totalScore += score;
         } else {
           // Needs manual grading
           needsManualGrading = true;
